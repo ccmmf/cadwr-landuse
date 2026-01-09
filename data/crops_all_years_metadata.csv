@@ -1,0 +1,21 @@
+column_number,column_name,contents,notes
+1,Unique_ID,unique ID from LandIQ,"2016 extrapolated from 2018 sites, NAs = not included in 2018"
+2,year,LandIQ data year,
+3,centx,centroid lon,may differ year to year if polygon boundaries change
+4,centy,centroid lat,
+5,MULTIUSE,sequences of planting,"S = single, D = double, T = triple, Q = quadruple, I. = intercropped, M = mixed use, with types coded in PCNT columns"
+6,SENCROP,senescing crop at beginning of water year (reached peak NDVI in previous water year),
+7,ADOYSEN,adjusted day of year for senescing crop,
+8,ADOYEMRG,adjusted DOY for peak NDVI for emerging crop,
+9,YRPLANTED,year parcel was planted ,
+10,HYDRORGN,DWR hydrological region that centroid of each crop field resides in,
+11,REGION,DWR regional office associated with polygon,
+12,COUNTY,county of centroid for each crop field,
+13,season,"season for planting, aligns with class, subclass etc","3 planting seasons in 2016, 4 planting seasons in 2018 onward; season 2 = main growing season"
+14,CLASS,LandIQ crop class (alphabet),
+15,SUBCLASS,LandIQ subclass (numeric),
+16,SPECOND,LandIQ special condition designation,
+17,IRRTYPPA,status of irrigation system,
+18,IRRTYPPB,type of irrigation system,
+19,PCNT,percentage of cropped area covered by each crop according to season,
+20,ADOY,"adjusted day of year for peak NDVI for crop per season, corresponds to year Julian date (1 = January 1), negative values correspond to Julian date of prior year (-92 = Oct1 through -1 = Dec 31), NULL for no peak date identified by LandIQ",
