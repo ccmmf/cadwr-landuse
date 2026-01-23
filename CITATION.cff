@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+title: "CCMMF Harmonized LandIQ Crop Mapping Data for California"
+message: "If you use this dataset, please cite it as below."
+type: dataset
+authors:
+  - given-names: David LeBauer
+    affiliation: University of Arizona
+    orcid: 'https://orcid.org/0000-0001-7228-053X'
+  - given-names: Malmborg
+    affiliation: Boston University
+  - given-names: Akash B V
+    affiliation: CMR Institute of Technology, Bengaluru
+repository-code: "https://github.com/ccmmf/cadwr-landuse"
+abstract: >-
+  Harmonized California Department of Water Resources (CADWR) 
+  Statewide Crop Mapping data (LandIQ) for 2016-2023. This dataset 
+  provides consistent field-level crop identification for ~600,000 
+  agricultural fields across California, formatted for use in 
+  carbon cycle modeling and ecosystem analysis.
+keywords:
+  - California
+  - agriculture
+  - crop mapping
+  - LandIQ
+  - carbon modeling
+  - land use
+  - CADWR
+license: BSD-3-Clause
+version: "1.0.0"
+date-released: "2026-01-22"
