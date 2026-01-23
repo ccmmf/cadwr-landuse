@@ -1,0 +1,33 @@
+---
+title: "Metadata"
+format:
+  gfm:
+    df-print: kable
+execute:
+  echo: false
+  message: false
+  warning: false
+---
+
+Tables in this document are generated directly from the CSV/TSV sources in `data/`.
+
+## Harmonized Table Column Reference
+
+```{r}
+metadata <- read.csv("../data/crops_all_years_metadata.csv", stringsAsFactors = FALSE)
+knitr::kable(metadata, align = "rlll")
+```
+
+## LandIQ Classification Codes
+
+```{r}
+landiq_codes <- read.delim("../data/landiq_crop_mapping_codes.tsv", stringsAsFactors = FALSE)
+knitr::kable(landiq_codes)
+```
+
+## Plant Functional Type (PFT) Mapping
+
+```{r}
+pft_table <- read.csv("../data/CARB_PFTs_table.csv", stringsAsFactors = FALSE)
+knitr::kable(pft_table)
+```
