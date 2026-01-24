@@ -1,7 +1,10 @@
 # CADWR Land Use Data: Harmonized LandIQ Crop Mapping for California
 
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](LICENSE)
+[![Code License](https://img.shields.io/badge/Code_License-BSD_3--Clause-blue.svg)](LICENSE)
+[![Data License](https://img.shields.io/badge/Data_License-CC0_1.0-lightgrey.svg)](data/LICENSE)
 [![Data Version](https://img.shields.io/badge/Data_Version-1.0.0-green.svg)](#versioning)
+
 
 This repository contains scripts, documentation, and lookup tables for processing California Department of Water Resources (CADWR) Statewide Crop Mapping data (commonly known as "LandIQ" data) for use in the CCMMF carbon modeling workflow.
 
