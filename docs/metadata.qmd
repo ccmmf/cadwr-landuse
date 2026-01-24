@@ -9,7 +9,13 @@ execute:
   warning: false
 ---
 
-Tables in this document are generated directly from the CSV/TSV sources in `data/`.
+This document renders the metadata CSV files for reference.
+
+To generate <!--TODO: automate -->
+
+```sh
+quarto render docs/metadata.qmd
+```
 
 ## Harmonized Table Column Reference
 
