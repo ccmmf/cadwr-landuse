@@ -268,8 +268,19 @@ create_spatial_index("combined", "geom")
 
 # Write to disk.
 combined <- duckspatial::ddbs_read_vector(conn, "combined")
+# TODO: Get SRS programmatically. Why does DuckDB drop this information? How do
+# I set it in DuckDB and keep it around?
 sf::st_crs(combined) <- 4269
 sfarrow::st_write_parquet(combined, "combined.geoparquet")
+
+# To read this file in QGIS, need to install QGIS from conda-forge.
+# With pixi:
+#   pixi add qgis libgdal-arrow-parquet duckdb
+# Then, run from QGIS.
+
+# TODO: Split polygons
+# TODO: Merged polygons
+# TODO: Other polygons
 
 ################################################################################
 stop("Scratch code below here...")
