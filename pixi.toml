@@ -1,0 +1,21 @@
+[workspace]
+authors = ["Alexey Shiklomanov <alexey.shiklomanov@gmail.com>"]
+channels = ["conda-forge"]
+name = "cadwr-landuse"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+r-sf = ">=1.0_24,<2"
+gdal = ">=3.12.1,<4"
+proj = ">=9.7.1,<10"
+r-devtools = ">=2.4.6,<3"
+r-tidyverse = ">=2.0.0,<3"
+r-ggspatial = ">=1.1.10,<2"
+duckdb = ">=1.4.3,<2"
+r-duckdb = ">=1.4.3,<2"
+arrow = ">=1.4.0,<2"
+cxx-compiler = ">=1.11.0,<2"
+r-arrow = ">=22.0.0,<23"
