@@ -4,9 +4,11 @@ from pathlib import Path
 from functools import reduce
 
 import geopandas as gpd
-from tqdm import tqdm
+import dask
+from dask import delayed
+from dask.diagnostics import ProgressBar
 
-landiq_root_dir = Path("~/data").expanduser()
+landiq_root_dir = Path("/projectnb/dietzelab/ccmmf/LandIQ_data/LandIQ_shapefiles")
 
 f2018 = landiq_root_dir / "i15_Crop_Mapping_2018_SHP" / "i15_Crop_Mapping_2018.shp"
 f2019 = landiq_root_dir / "i15_Crop_Mapping_2019_SHP" / "i15_Crop_Mapping_2019.shp"
@@ -45,7 +47,7 @@ def read_shp(fname: Path, suffix: str):
 
 
 print("Reading all data")
-dat_all = {year: read_shp(fname, year) for year, fname in tqdm(files.items())}
+dat_all = {year: read_shp(fname, year) for year, fname in files.items()}
 
 # Get all counties to loop over
 all_counties = dat_all["2023"]["COUNTY"].unique().tolist()
@@ -57,16 +59,17 @@ dat_all = {year: data.to_crs(common_crs) for year, data in dat_all.items()}
 result_dir = Path("_results")
 result_dir.mkdir(exist_ok=True, parents=True)
 
-print("Processing overlays by county")
-for county in tqdm(all_counties):
+
+# Process a single county (wrapped for parallelization)
+@delayed
+def process_county(county, dat_all, result_dir):
     result_file = result_dir / f"{county}.parq"
+
     if result_file.exists():
-        print(f"Skipping existing county {county}")
-        continue
+        return f"Skipped {county} (exists)"
 
     if county == "****":
-        print("Skipping '****' --- not sure what this is...")
-        continue
+        return f"Skipped {county} (invalid)"
 
     dat_dict = {
         year: dat[dat["COUNTY"] == county].drop(columns=["COUNTY"])
@@ -77,3 +80,15 @@ for county in tqdm(all_counties):
         lambda d1, d2: gpd.overlay(d1, d2, how="union"), dat_dict.values()
     )
     combined.to_parquet(result_file)
+
+    return f"Processed {county}"
+
+
+print("Processing overlays by county")
+
+# Create delayed tasks for each county
+tasks = [process_county(county, dat_all, result_dir) for county in all_counties]
+
+# Execute in parallel with progress bar
+with ProgressBar():
+    results = dask.compute(*tasks)

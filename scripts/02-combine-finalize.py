@@ -6,7 +6,7 @@ import pandas as pd
 import uuid
 from tqdm import tqdm
 
-landiq_root_dir = Path("~/data").expanduser()
+landiq_root_dir = Path("/projectnb/dietzelab/ccmmf/LandIQ_data/LandIQ_shapefiles")
 county_files = sorted(Path("_results").glob("*.parq"))
 
 outdir = Path("_results") / "final"
