@@ -3,7 +3,6 @@
 from pathlib import Path
 import geopandas as gpd
 import pandas as pd
-import uuid
 from tqdm import tqdm
 
 landiq_root_dir = Path("/projectnb/dietzelab/ccmmf/LandIQ_data/LandIQ_shapefiles")
@@ -17,20 +16,23 @@ combined = pd.concat(
     [gpd.read_parquet(fname) for fname in county_files], ignore_index=True
 )
 
-combined.insert(0, "uuid", [str(uuid.uuid4()) for _ in range(len(combined))])
+combined.insert(0, "parcel_id", range(len(combined)))
 combined.to_file(outdir / "parcels.gpkg", driver="GPKG")
 
 # Now, build a long table of the metadata
 combined_df = combined.drop(columns="geometry")
 
-combined_long = combined_df.melt(
-    id_vars=["uuid"], var_name="year_col", value_name="UniqueID"
+# Rename `"UniqueID_2023"` to `2023` with `int` type.
+# Do this before melting to avoid allocating a huge string unnecessarily.
+rename_uid = {
+    col: col.replace("UniqueID_", "")
+    for col in combined_df.columns
+    if col.startswith("UniqueID_")
+}
+combined_long = combined_df.rename(columns=rename_uid).melt(
+    id_vars=["parcel_id"], var_name="year", value_name="UniqueID"
 )
-
-combined_long["year"] = (
-    combined_long["year_col"].str.extract(r"UniqueID_(\d{4})").astype(int)
-)
-combined_long = combined_long[["uuid", "year", "UniqueID"]]
+combined_long["year"] = combined_long["year"].astype(int)
 
 # Now, we load the original data and merge in the relevant metadata.
 files = {
@@ -50,18 +52,16 @@ files = {
     ),
 }
 
+# Read metadata columns
+metadata_file = Path("data") / "CARB_Metadata_ref.csv"
+metadata = pd.read_csv(metadata_file)
+keep_cols = metadata.loc[metadata["keep"] == 1]
+
 
 def read_data(fname: Path, year: int):
-    dat = gpd.read_file(fname, use_arrow=True, ignore_geometry=True)
-    # These columns are called different things at different points in time.
-    try:
-        dat = dat.drop(columns=["Shape_STAr", "Shape_STLe"])
-    except KeyError:
-        pass
-    try:
-        dat = dat.drop(columns=["Shape_Leng", "Shape_Area"])
-    except KeyError:
-        pass
+    # Figure out which columns to read based on the year
+    read_cols = keep_cols.loc[keep_cols[str(year)] == 1]["name"]
+    dat = gpd.read_file(fname, use_arrow=True, ignore_geometry=True, columns=read_cols)
     dat["year"] = year
     return dat
 
@@ -73,7 +73,7 @@ final = pd.concat(
 )
 
 # Some sanity checks
-county_counts = final.groupby(["uuid"])["COUNTY"].nunique()
+county_counts = final.groupby(["parcel_id"])["COUNTY"].nunique()
 if bad_rows := (county_counts[county_counts > 1]).size:
     raise ValueError(f"{bad_rows} parcels moved counties.")
 
