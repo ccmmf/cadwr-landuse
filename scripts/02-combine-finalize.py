@@ -1,20 +1,31 @@
 #!/usr/bin/env python
-
 from pathlib import Path
 import geopandas as gpd
 import pandas as pd
 from tqdm import tqdm
 
 landiq_root_dir = Path("/projectnb/dietzelab/ccmmf/LandIQ_data/LandIQ_shapefiles")
-county_files = sorted(Path("_results").glob("*.parq"))
+# landiq_root_dir = Path("~/data").expanduser()
+tile_files = sorted(Path("_results/tiles").glob("*.parq"))
 
-outdir = Path("_results") / "final"
+outdir = Path("_results") / "final-tiles"
 outdir.mkdir(exist_ok=True, parents=True)
 
 # Read all the files and combine into a single table
-combined = pd.concat(
-    [gpd.read_parquet(fname) for fname in county_files], ignore_index=True
+combined_raw = pd.concat(
+    [gpd.read_parquet(fname) for fname in tile_files], ignore_index=True
 )
+
+# Merge polygons that were split only because of tiling
+ucols = [col for col in combined_raw.columns if col.startswith("UniqueID_")]
+combined_raw["is_duplicate"] = combined_raw.duplicated(subset=ucols, keep=False)
+merged = combined_raw.loc[combined_raw["is_duplicate"]].dissolve(
+    by=ucols, as_index=False
+)
+already_unique = combined_raw.loc[~combined_raw["is_duplicate"]].drop(
+    columns=["is_duplicate"]
+)
+combined = pd.concat([already_unique, merged], ignore_index=True).sort_values(by=ucols)
 
 combined.insert(0, "parcel_id", range(len(combined)))
 combined.to_file(outdir / "parcels.gpkg", driver="GPKG")
