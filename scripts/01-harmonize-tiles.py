@@ -8,38 +8,9 @@ import geopandas as gpd
 import dask
 from dask import delayed
 from dask.diagnostics import ProgressBar
+from dask.distributed import Client, LocalCluster
 import numpy as np
 from shapely import box
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-landiq_root_dir = Path("/projectnb/dietzelab/ccmmf/LandIQ_data/LandIQ_shapefiles")
-# landiq_root_dir = Path("~/data").expanduser()
-
-f2018 = landiq_root_dir / "i15_Crop_Mapping_2018_SHP" / "i15_Crop_Mapping_2018.shp"
-f2019 = landiq_root_dir / "i15_Crop_Mapping_2019_SHP" / "i15_Crop_Mapping_2019.shp"
-f2020 = landiq_root_dir / "i15_Crop_Mapping_2020_SHP" / "i15_Crop_Mapping_2020.shp"
-f2021 = landiq_root_dir / "i15_Crop_Mapping_2021_SHP" / "i15_Crop_Mapping_2021.shp"
-f2022 = (
-    landiq_root_dir
-    / "i15_Crop_Mapping_2022_Provisional_SHP"
-    / "i15_Crop_Mapping_2022_Provisional.shp"
-)
-f2023 = (
-    landiq_root_dir
-    / "i15_Crop_Mapping_2023_Provisional_SHP"
-    / "i15_Crop_Mapping_2023_Provisional.shp"
-)
-
-files = {
-    "2018": f2018,
-    "2019": f2019,
-    "2020": f2020,
-    "2021": f2021,
-    "2022": f2022,
-    "2023": f2023,
-}
 
 
 def read_shp(fname: Path, suffix: str):
@@ -51,44 +22,6 @@ def read_shp(fname: Path, suffix: str):
         .reset_index(drop=True)
         .rename(columns={"UniqueID": f"UniqueID_{suffix}"})
     )
-
-
-logger.info("Reading all data")
-dat_all = {year: read_shp(fname, year) for year, fname in files.items()}
-
-# Use the 2023 CRS for everything
-common_crs = dat_all["2023"].crs
-dat_all = {year: data.to_crs(common_crs) for year, data in dat_all.items()}
-
-# Get the total bounding box
-combined_bounds = reduce(
-    lambda b1, b2: (
-        min(b1[0], b2[0]),
-        min(b1[1], b2[1]),
-        max(b1[2], b2[2]),
-        max(b1[3], b2[3]),
-    ),
-    [dat.total_bounds for dat in dat_all.values()],
-)
-
-# Create tiles
-minx, miny, maxx, maxy = combined_bounds
-ntiles = 10
-x_edges = np.linspace(minx, maxx, ntiles + 1)
-y_edges = np.linspace(miny, maxy, ntiles + 1)
-tiles = []
-for i in range(ntiles):
-    for j in range(ntiles):
-        tile_geom = box(x_edges[i], y_edges[j], x_edges[i + 1], y_edges[j + 1])
-        tiles.append(
-            {
-                "tile_id": f"x{i:02d}_y{j:02d}",
-                "geometry": tile_geom,
-            }
-        )
-
-result_dir = Path("_results") / "tiles"
-result_dir.mkdir(exist_ok=True, parents=True)
 
 
 def clip_to_tile(dat: gpd.GeoDataFrame, tile: dict) -> gpd.GeoDataFrame | None:
@@ -133,12 +66,84 @@ def process_tile(tile, dat_all, result_dir):
 
     return f"Processed tile {tid}"
 
+if __name__ == "__main__":
+    ntiles = 25
+    result_dir = Path("_results") / "tiles-v2"
+    result_dir.mkdir(exist_ok=True, parents=True)
 
-logger.info("Processing overlays by tile")
+    client = Client(n_workers=12, threads_per_worker=1)
 
-# Create delayed tasks for each tile
-tasks = [process_tile(tile, dat_all, result_dir) for tile in tiles]
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
 
-# Execute in parallel with progress bar
-with ProgressBar():
+    landiq_root_dir = Path("/projectnb/dietzelab/ccmmf/LandIQ_data/LandIQ_shapefiles")
+    # landiq_root_dir = Path("~/data").expanduser()
+
+    f2018 = landiq_root_dir / "i15_Crop_Mapping_2018_SHP" / "i15_Crop_Mapping_2018.shp"
+    f2019 = landiq_root_dir / "i15_Crop_Mapping_2019_SHP" / "i15_Crop_Mapping_2019.shp"
+    f2020 = landiq_root_dir / "i15_Crop_Mapping_2020_SHP" / "i15_Crop_Mapping_2020.shp"
+    f2021 = landiq_root_dir / "i15_Crop_Mapping_2021_SHP" / "i15_Crop_Mapping_2021.shp"
+    f2022 = (
+        landiq_root_dir
+        / "i15_Crop_Mapping_2022_Provisional_SHP"
+        / "i15_Crop_Mapping_2022_Provisional.shp"
+    )
+    f2023 = (
+        landiq_root_dir
+        / "i15_Crop_Mapping_2023_Provisional_SHP"
+        / "i15_Crop_Mapping_2023_Provisional.shp"
+    )
+
+    files = {
+        "2018": f2018,
+        "2019": f2019,
+        "2020": f2020,
+        "2021": f2021,
+        "2022": f2022,
+        "2023": f2023,
+    }
+
+    logger.info("Reading all data")
+    dat_all = {year: read_shp(fname, year) for year, fname in files.items()}
+
+    # Use the 2023 CRS for everything
+    common_crs = dat_all["2023"].crs
+    dat_all = {year: data.to_crs(common_crs) for year, data in dat_all.items()}
+
+    # Get the total bounding box
+    combined_bounds = reduce(
+        lambda b1, b2: (
+            min(b1[0], b2[0]),
+            min(b1[1], b2[1]),
+            max(b1[2], b2[2]),
+            max(b1[3], b2[3]),
+        ),
+        [dat.total_bounds for dat in dat_all.values()],
+    )
+
+    # Create tiles
+    minx, miny, maxx, maxy = combined_bounds
+    x_edges = np.linspace(minx, maxx, ntiles + 1)
+    y_edges = np.linspace(miny, maxy, ntiles + 1)
+    tiles = []
+    for i in range(ntiles):
+        for j in range(ntiles):
+            tile_geom = box(x_edges[i], y_edges[j], x_edges[i + 1], y_edges[j + 1])
+            tiles.append(
+                {
+                    "tile_id": f"x{i:02d}_y{j:02d}",
+                    "geometry": tile_geom,
+                }
+            )
+
+
+    logger.info("Processing overlays by tile")
+
+    # Create delayed tasks for each tile
+    tasks = [process_tile(tile, dat_all, result_dir) for tile in tiles]
+
+    # Execute in parallel with progress bar
+    # with ProgressBar():
     results = dask.compute(*tasks)
+
+    client.close()
