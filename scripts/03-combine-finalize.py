@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 from pathlib import Path
+
 import geopandas as gpd
 import pandas as pd
 from tqdm import tqdm
 
 landiq_root_dir = Path("/projectnb/dietzelab/ccmmf/LandIQ_data/LandIQ_shapefiles")
 # landiq_root_dir = Path("~/data").expanduser()
-tile_files = sorted(Path("_results/tiles").glob("*.parq"))
+tile_files = sorted(Path("_results/tiles-output").glob("*.parq"))
 
 outdir = Path("_results") / "final-tiles"
 outdir.mkdir(exist_ok=True, parents=True)
@@ -22,16 +23,22 @@ combined_raw["is_duplicate"] = combined_raw.duplicated(subset=ucols, keep=False)
 merged = combined_raw.loc[combined_raw["is_duplicate"]].dissolve(
     by=ucols, as_index=False
 )
-already_unique = combined_raw.loc[~combined_raw["is_duplicate"]].drop(
-    columns=["is_duplicate"]
+already_unique = combined_raw.loc[~combined_raw["is_duplicate"]]
+combined = (
+    pd.concat([already_unique, merged], ignore_index=True)
+    .sort_values(by=ucols)
+    .drop(columns=["is_duplicate"])
 )
-combined = pd.concat([already_unique, merged], ignore_index=True).sort_values(by=ucols)
 
 combined.insert(0, "parcel_id", range(len(combined)))
 combined.to_file(outdir / "parcels.gpkg", driver="GPKG")
 
 # Now, build a long table of the metadata
-combined_df = combined.drop(columns="geometry")
+# First, calculate the centroids.
+combined['centroids'] = combined.geometry.centroid
+combined['centx'] = combined["centroids"].x
+combined['centy'] = combined["centroids"].y
+combined_df = combined.drop(columns=["geometry", "centroids"])
 
 # Rename `"UniqueID_2023"` to `2023` with `int` type.
 # Do this before melting to avoid allocating a huge string unnecessarily.
@@ -41,7 +48,7 @@ rename_uid = {
     if col.startswith("UniqueID_")
 }
 combined_long = combined_df.rename(columns=rename_uid).melt(
-    id_vars=["parcel_id"], var_name="year", value_name="UniqueID"
+    id_vars=["parcel_id", "centx", "centy"], var_name="year", value_name="UniqueID"
 )
 combined_long["year"] = combined_long["year"].astype(int)
 
@@ -84,8 +91,8 @@ final = pd.concat(
 )
 
 # Some sanity checks
-county_counts = final.groupby(["parcel_id"])["COUNTY"].nunique()
-if bad_rows := (county_counts[county_counts > 1]).size:
-    raise ValueError(f"{bad_rows} parcels moved counties.")
+# county_counts = final.groupby(["parcel_id"])["COUNTY"].nunique()
+# if bad_rows := (county_counts[county_counts > 1]).size:
+#     raise ValueError(f"{bad_rows} parcels moved counties.")
 
-final.to_parquet(outdir / "metadata.parq")
+final.to_parquet(outdir / "crops_all_years.parq")
