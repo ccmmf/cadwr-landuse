@@ -11,7 +11,9 @@ execute:
 
 This document renders the metadata CSV files for reference.
 
-To generate <!--TODO: automate -->
+<!--TODO: automate -->
+
+To generate the rendered metadata tables, run:
 
 ```sh
 quarto render docs/metadata.qmd
