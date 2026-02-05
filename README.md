@@ -40,7 +40,7 @@ cadwr-landuse/
 ├── LICENSE                         
 ├── README.md                       
 ├── docs/
-│   ├── harmonization.md            # Harmonization notes and assumptions
+│   ├── harmonization_v0.1.md       # Harmonization workflow documentation (v0.1)
 │   └── metadata.qmd                # Generated metadata tables (from `data/`)
 ├── data/
 │   ├── CARB_PFTs_table.csv         # Crop -> PFT mapping for ecosystem modeling
@@ -171,16 +171,22 @@ tar -xzvf ccmmf_landiq_data.tar.gz
 
 ### For geo.bu.edu Users
 
+Define the CCMMF directory once for convenience:
+
+```bash
+export GEO_CCMMF_DIR=/projectnb/dietzelab/ccmmf
+```
+
 Data is pre-staged at:
 ```bash
 # Harmonized CSV (primary product)
-/projectnb/dietzelab/ccmmf/data_raw/cadwr_land_use/crops_all_years.csv
+$GEO_CCMMF_DIR/data_raw/cadwr_land_use/crops_all_years.csv
 
 # Raw shapefiles by year
-/projectnb/dietzelab/ccmmf/data_raw/cadwr_land_use/landiq_shapefiles/
+$GEO_CCMMF_DIR/data_raw/cadwr_land_use/landiq_shapefiles/
 
 # Spatial join across all years
-/projectnb/dietzelab/ccmmf/data_raw/cadwr_land_use/2015-2023_crops_same_uid/
+$GEO_CCMMF_DIR/data_raw/cadwr_land_use/2015-2023_crops_same_uid/
 ```
 
 ## Usage Examples
