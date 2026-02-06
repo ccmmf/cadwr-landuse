@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import argparse
 from pathlib import Path
 import logging
 from functools import reduce
@@ -13,7 +14,16 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 ntiles = 25
-landiq_root_dir = Path("/projectnb/dietzelab/ccmmf/LandIQ_data/LandIQ_shapefiles")
+
+parser = argparse.ArgumentParser(description="Split LandIQ data into tiles")
+parser.add_argument(
+    "--landiq-root-dir",
+    type=Path,
+    default=Path("/projectnb/dietzelab/ccmmf/LandIQ_data/LandIQ_shapefiles"),
+    help="Root directory for LandIQ shapefiles",
+)
+args = parser.parse_args()
+landiq_root_dir = args.landiq_root_dir
 
 result_dir = Path("_results") / "tiles-input"
 result_dir.mkdir(exist_ok=True, parents=True)
@@ -42,6 +52,7 @@ files = {
     "2023": f2023,
 }
 
+
 def read_shp(fname: Path, suffix: str):
     # For the combined index file, subset to just the uniqueID and geometry.
     # We'll merge everything later.
@@ -51,6 +62,7 @@ def read_shp(fname: Path, suffix: str):
         .reset_index(drop=True)
         .rename(columns={"UniqueID": f"UniqueID_{suffix}"})
     )
+
 
 logger.info("Reading all data")
 dat_all = {year: read_shp(fname, year) for year, fname in tqdm(files.items())}
@@ -88,11 +100,9 @@ for i in range(ntiles):
             }
         )
 
+
 def clip_to_tile(
-    dat: gpd.GeoDataFrame,
-    year: str,
-    tile: dict,
-    result_dir: Path = result_dir
+    dat: gpd.GeoDataFrame, year: str, tile: dict, result_dir: Path = result_dir
 ) -> Path | None:
     tgeom = tile["geometry"]
     tid = tile["tile_id"]
@@ -114,6 +124,7 @@ def clip_to_tile(
     dsub.to_parquet(outfile)
     return outfile
 
+
 logger.info("Splitting data into tiles")
 for tile in tqdm(tiles, desc="Tiles"):
     for year, dat in tqdm(dat_all.items(), desc="Years", leave=False):
@@ -123,4 +134,3 @@ for tile in tqdm(tiles, desc="Tiles"):
 # for tdir in (Path("_results") / "tiles-input").iterdir():
 #     if not any(tdir.iterdir()):
 #         tdir.rmdir()
-
