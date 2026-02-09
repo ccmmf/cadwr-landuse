@@ -1,7 +1,10 @@
 # CADWR Land Use Data: Harmonized LandIQ Crop Mapping for California
 
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](LICENSE)
+[![Code License](https://img.shields.io/badge/Code_License-BSD_3--Clause-blue.svg)](LICENSE)
+![Public Domain Data](https://img.shields.io/badge/Data_License-CC0_1.0-lightgrey.svg)](https://creativecommons.org/public-domain/cc0/)
 [![Data Version](https://img.shields.io/badge/Data_Version-1.0.0-green.svg)](#versioning)
+
 
 This repository contains scripts, documentation, and lookup tables for processing California Department of Water Resources (CADWR) Statewide Crop Mapping data (commonly known as "LandIQ" data) for use in the CCMMF carbon modeling workflow.
 
@@ -21,14 +24,14 @@ The LandIQ dataset provides annual field-level crop identification for all agric
 
 Original data from CADWR Statewide Crop Mapping Program:
 
-| Attribute | Value |
-|-----------|-------|
-| **Source** | California Department of Water Resources, Land Use Program |
-| **Website** | https://data.cnra.ca.gov/dataset/statewide-crop-mapping |
-| **Coverage** | Statewide California agricultural lands |
-| **Temporal Extent** | 2014, 2016, 2018–2023 (harmonized: 2016–2023) |
+| Attribute            | Value                                                                         |
+| -------------------- | ----------------------------------------------------------------------------- |
+| **Source**           | California Department of Water Resources, Land Use Program                    |
+| **Website**          | https://data.cnra.ca.gov/dataset/statewide-crop-mapping                       |
+| **Coverage**         | Statewide California agricultural lands                                       |
+| **Temporal Extent**  | 2014, 2016, 2018–2023 (harmonized: 2016–2023)                                 |
 | **Update Frequency** | Annual (provisional releases typically in fall, finalized the following year) |
-| **Native CRS** | WGS 84 / Pseudo-Mercator for 2014, 2016, and 2018 and NAD83 (EPSG 4269) from 2019 onwards; harmonized to EPSG:3857 (Web Mercator) for centroids |
+| **Native CRS**       | WGS 84 / Pseudo-Mercator for 2014, 2016, and 2018 and NAD83 (EPSG 4269) from 2019 onwards; harmonized to EPSG:3857 (Web Mercator) for centroids |
 
 ## Repository Structure
 
@@ -36,7 +39,9 @@ Original data from CADWR Statewide Crop Mapping Program:
 cadwr-landuse/
 ├── LICENSE                         
 ├── README.md                       
-├── metadata.md                     # Detailed column documentation with examples
+├── docs/
+│   ├── harmonization_v0.1.md       # Harmonization workflow documentation (v0.1)
+│   └── metadata.qmd                # Generated metadata tables (from `data/`)
 ├── data/
 │   ├── CARB_PFTs_table.csv         # Crop -> PFT mapping for ecosystem modeling
 │   ├── CARB_Metadata_ref.csv       # Column presence by year (provenance tracking)
@@ -58,59 +63,61 @@ The harmonized dataset combines all years into a single CSV with consistent colu
 
 ### Column Reference
 
-| Column | Type | Description | Notes |
-|--------|------|-------------|-------|
-| `UniqueID` | integer | Persistent field identifier across years | 2016 extrapolated from 2018 spatial join |
-| `year` | integer | Data collection year (2016, 2018–2023) | No 2017 data available |
-| `centx` | numeric | Field centroid X coordinate | EPSG:3857 (Web Mercator) |
-| `centy` | numeric | Field centroid Y coordinate | EPSG:3857 (Web Mercator) |
-| `COUNTY` | character | California county name | Based on centroid location |
-| `HYDRORGN` | character | DWR hydrologic region | 10 regions statewide |
-| `REGION` | character | DWR regional office code | NRO, NCRO, SCRO, SRO |
-| `CLASS` | character | Primary crop class code | Single letter (see table below) |
-| `SUBCLASS` | integer | Crop subclass for specific identification | Numeric, crop-specific |
-| `season` | integer | Growing season (1–4) | Season 2 = main summer crop |
-| `MULTIUSE` | character | Cropping intensity code | S/D/T/Q/I/M (see below) |
-| `PCNT` | integer | Percentage of field area | "00" represents 100% |
-| `ADOY` | integer | Adjusted day-of-year for peak NDVI | Negative = prior year (e.g., -92 = Oct 1) |
-| `SENCROP` | character | Senescing crop at start of water year | Crop code from previous season |
-| `ADOYSEN` | integer | ADOY for senescing crop | Available 2021+ |
-| `ADOYEMRG` | integer | ADOY for emerging crop | Available 2021+ |
-| `YRPLANTED` | integer | Year perennial crops were established | Available 2020+; 0 = unknown |
-| `SPECOND` | character | Special condition designation | Y = young perennial, etc. |
-| `IRRTYPPA` | character | Irrigation status | Blank = presumed irrigated, N = non-irrigated |
-| `IRRTYPPB` | character | Irrigation system type | Flood, drip, sprinkler, etc. |
+<!-- TODO: Render the tables in this section from the source CSV/TSV files in `data/` (see `docs/metadata.qmd`) to avoid maintaining two sources of truth. -->
 
-See [metadata.md](metadata.md) for complete column descriptions with example values.
+| Column      | Type      | Description                               | Notes                                         |
+| ----------- | --------- | ----------------------------------------- | --------------------------------------------- |
+| `UniqueID`  | integer   | Persistent field identifier across years  | 2016 extrapolated from 2018 spatial join      |
+| `year`      | integer   | Data collection year (2016, 2018–2023)    | No 2017 data available                        |
+| `centx`     | numeric   | Field centroid X coordinate               | EPSG:3857 (Web Mercator)                      |
+| `centy`     | numeric   | Field centroid Y coordinate               | EPSG:3857 (Web Mercator)                      |
+| `COUNTY`    | character | California county name                    | Based on centroid location                    |
+| `HYDRORGN`  | character | DWR hydrologic region                     | 10 regions statewide                          |
+| `REGION`    | character | DWR regional office code                  | NRO, NCRO, SCRO, SRO                          |
+| `CLASS`     | character | Primary crop class code                   | Single letter (see table below)               |
+| `SUBCLASS`  | integer   | Crop subclass for specific identification | Numeric, crop-specific                        |
+| `season`    | integer   | Growing season (1–4)                      | Season 2 = main summer crop                   |
+| `MULTIUSE`  | character | Cropping intensity code                   | S/D/T/Q/I/M (see below)                       |
+| `PCNT`      | integer   | Percentage of field area                  | "00" represents 100%                          |
+| `ADOY`      | integer   | Adjusted day-of-year for peak NDVI        | Negative = prior year (e.g., -92 = Oct 1)     |
+| `SENCROP`   | character | Senescing crop at start of water year     | Crop code from previous season                |
+| `ADOYSEN`   | integer   | ADOY for senescing crop                   | Available 2021+                               |
+| `ADOYEMRG`  | integer   | ADOY for emerging crop                    | Available 2021+                               |
+| `YRPLANTED` | integer   | Year perennial crops were established     | Available 2020+; 0 = unknown                  |
+| `SPECOND`   | character | Special condition designation             | Y = young perennial, etc.                     |
+| `IRRTYPPA`  | character | Irrigation status                         | Blank = presumed irrigated, N = non-irrigated |
+| `IRRTYPPB`  | character | Irrigation system type                    | Flood, drip, sprinkler, etc.                  |
+
+See [data/crops_all_years_metadata.csv](data/crops_all_years_metadata.csv) for complete column descriptions and notes.
 
 ### Cropping Intensity Codes (MULTIUSE)
 
-| Code | Meaning | Description |
-|------|---------|-------------|
-| S | Single | One crop per water year |
-| D | Double | Two crops per water year |
-| T | Triple | Three crops per water year |
-| Q | Quadruple | Four crops per water year |
-| I | Intercropped | Multiple crops grown simultaneously |
-| M | Mixed | Combination of cropping patterns |
+| Code | Meaning      | Description                         |
+| ---- | ------------ | ----------------------------------- |
+| S    | Single       | One crop per water year             |
+| D    | Double       | Two crops per water year            |
+| T    | Triple       | Three crops per water year          |
+| Q    | Quadruple    | Four crops per water year           |
+| I    | Intercropped | Multiple crops grown simultaneously |
+| M    | Mixed        | Combination of cropping patterns    |
 
 ### Crop Classification System
 
 LandIQ uses a hierarchical CLASS/SUBCLASS system. Major crop classes:
 
-| CLASS | Category | Examples | Typical SUBCLASS Range |
-|-------|----------|----------|------------------------|
-| C | Citrus & Subtropical | Oranges, lemons, avocados, olives | 1–11 |
-| D | Deciduous Fruits & Nuts | Almonds, walnuts, pistachios, stone fruits | 1–21 |
-| F | Field Crops | Cotton, corn, beans, safflower | 1–18 |
-| G | Grain & Hay | Wheat, barley, oats | 1–7 |
-| P | Pasture | Alfalfa, mixed pasture, turf | 1–9 |
-| R | Rice | Paddy rice, wild rice | 1–2 |
-| T | Truck, Nursery & Berry | Tomatoes, lettuce, strawberries | 1–34 |
-| V | Vineyards | Table, wine, and raisin grapes | 1–4 |
-| I | Idle | Fallow land (1–4+ years) | 1–4 |
-| YP | Young Perennial | Recently planted orchards/vineyards | — |
-| X | Unclassified | Unable to determine | — |
+| CLASS | Category                | Examples                                   | Typical SUBCLASS Range |
+| ----- | ----------------------- | ------------------------------------------ | ---------------------- |
+| C     | Citrus & Subtropical    | Oranges, lemons, avocados, olives          | 1–11                   |
+| D     | Deciduous Fruits & Nuts | Almonds, walnuts, pistachios, stone fruits | 1–21                   |
+| F     | Field Crops             | Cotton, corn, beans, safflower             | 1–18                   |
+| G     | Grain & Hay             | Wheat, barley, oats                        | 1–7                    |
+| P     | Pasture                 | Alfalfa, mixed pasture, turf               | 1–9                    |
+| R     | Rice                    | Paddy rice, wild rice                      | 1–2                    |
+| T     | Truck, Nursery & Berry  | Tomatoes, lettuce, strawberries            | 1–34                   |
+| V     | Vineyards               | Table, wine, and raisin grapes             | 1–4                    |
+| I     | Idle                    | Fallow land (1–4+ years)                   | 1–4                    |
+| YP    | Young Perennial         | Recently planted orchards/vineyards        | —                      |
+| X     | Unclassified            | Unable to determine                        | —                      |
 
 Complete classification codes: [data/landiq_crop_mapping_codes.tsv](data/landiq_crop_mapping_codes.tsv)
 
@@ -118,12 +125,12 @@ Complete classification codes: [data/landiq_crop_mapping_codes.tsv](data/landiq_
 
 For ecosystem modeling, crops are mapped to PFTs in [data/CARB_PFTs_table.csv](data/CARB_PFTs_table.csv):
 
-| PFT Group | Description | Example Crops | N Crop Types |
-|-----------|-------------|---------------|--------------|
-| `woody` | Perennial woody crops | Almonds, walnuts, citrus, grapes | 45 |
-| `row` | Annual row crops | Tomatoes, corn, wheat, vegetables | 89 |
-| `hay` | Hay and forage | Alfalfa mixtures, mixed hay | 12 |
-| `rice` | Flooded rice systems | Paddy rice, wild rice | 2 |
+| PFT Group | Description           | Example Crops                     | N Crop Types |
+| --------- | --------------------- | --------------------------------- | ------------ |
+| `woody`   | Perennial woody crops | Almonds, walnuts, citrus, grapes  | 45           |
+| `row`     | Annual row crops      | Tomatoes, corn, wheat, vegetables | 89           |
+| `hay`     | Hay and forage        | Alfalfa mixtures, mixed hay       | 12           |
+| `rice`    | Flooded rice systems  | Paddy rice, wild rice             | 2            |
 
 ## Data Access
 
@@ -164,16 +171,22 @@ tar -xzvf ccmmf_landiq_data.tar.gz
 
 ### For geo.bu.edu Users
 
+Define the CCMMF directory once for convenience:
+
+```bash
+export GEO_CCMMF_DIR=/projectnb/dietzelab/ccmmf
+```
+
 Data is pre-staged at:
 ```bash
 # Harmonized CSV (primary product)
-/projectnb/dietzelab/ccmmf/data_raw/cadwr_land_use/crops_all_years.csv
+$GEO_CCMMF_DIR/data_raw/cadwr_land_use/crops_all_years.csv
 
 # Raw shapefiles by year
-/projectnb/dietzelab/ccmmf/data_raw/cadwr_land_use/landiq_shapefiles/
+$GEO_CCMMF_DIR/data_raw/cadwr_land_use/landiq_shapefiles/
 
 # Spatial join across all years
-/projectnb/dietzelab/ccmmf/data_raw/cadwr_land_use/2015-2023_crops_same_uid/
+$GEO_CCMMF_DIR/data_raw/cadwr_land_use/2015-2023_crops_same_uid/
 ```
 
 ## Usage Examples
@@ -259,14 +272,14 @@ The harmonization workflow consists of three main steps:
 
 ## Known Data Issues
 
-| Issue | Affected Years | Description | Workaround |
-|-------|----------------|-------------|------------|
-| Missing UniqueID | 2016 | Extrapolated from 2018 spatial join | Fields with NA UniqueID were not in 2018 data |
-| Provisional data | 2022–2023 | May be updated in future CADWR releases | Check for updates annually |
-| No Season 4 | 2016 | Fourth season added starting 2018 | Use seasons 1–3 only for 2016 |
-| Missing YRPLANTED | 2016–2019 | Only available from 2020 onward | Back-filled where possible; 0 = unknown |
-| Centroid shifts | All years | Field boundaries occasionally change | Same UniqueID may have slightly different coordinates |
-| No 2017 data | 2017 | CADWR did not release 2017 survey | Gap year in time series |
+| Issue             | Affected Years | Description                             | Workaround                                            |
+| ----------------- | -------------- | --------------------------------------- | ----------------------------------------------------- |
+| Missing UniqueID  | 2016           | Extrapolated from 2018 spatial join     | Fields with NA UniqueID were not in 2018 data         |
+| Provisional data  | 2022–2023      | May be updated in future CADWR releases | Check for updates annually                            |
+| No Season 4       | 2016           | Fourth season added starting 2018       | Use seasons 1–3 only for 2016                         |
+| Missing YRPLANTED | 2016–2019      | Only available from 2020 onward         | Back-filled where possible; 0 = unknown               |
+| Centroid shifts   | All years      | Field boundaries occasionally change    | Same UniqueID may have slightly different coordinates |
+| No 2017 data      | 2017           | CADWR did not release 2017 survey       | Gap year in time series                               |
 
 ## License
 
