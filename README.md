@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](LICENSE)
 [![Code License](https://img.shields.io/badge/Code_License-BSD_3--Clause-blue.svg)](LICENSE)
-[![Data License](https://img.shields.io/badge/Data_License-CC0_1.0-lightgrey.svg)](data/LICENSE)
+![Public Domain Data](https://img.shields.io/badge/Data_License-CC0_1.0-lightgrey.svg)](https://creativecommons.org/public-domain/cc0/)
 [![Data Version](https://img.shields.io/badge/Data_Version-1.0.0-green.svg)](#versioning)
 
 
