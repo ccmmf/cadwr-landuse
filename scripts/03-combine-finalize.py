@@ -5,16 +5,33 @@ import geopandas as gpd
 import pandas as pd
 from tqdm import tqdm
 
-landiq_root_dir = Path("/projectnb/dietzelab/ccmmf/LandIQ_data/LandIQ_shapefiles")
-# landiq_root_dir = Path("~/data").expanduser()
-tile_files = sorted(Path("_results/tiles-output").glob("*.parq"))
+import argparse
 
-outdir = Path("_results") / "final-tiles"
+parser = argparse.ArgumentParser(description="Recombine tiles and finalize")
+parser.add_argument(
+    "--landiq-root-dir",
+    type=Path,
+    default=Path("/projectnb/dietzelab/ccmmf/LandIQ_data/LandIQ_shapefiles"),
+    help="Root directory for LandIQ shapefiles",
+)
+parser.add_argument(
+    "--tile-dir", type=Path, default=Path("_results/tiles-output-sp")
+)
+parser.add_argument(
+    "--outdir", type=Path, default=Path("_results/final-tiles-sp")
+)
+
+args = parser.parse_args()
+
+landiq_root_dir = args.landiq_root_dir
+tile_files = sorted(args.tile_dir.glob("*.parq"))
+
+outdir = args.outdir
 outdir.mkdir(exist_ok=True, parents=True)
 
 # Read all the files and combine into a single table
 combined_raw = pd.concat(
-    [gpd.read_parquet(fname) for fname in tile_files], ignore_index=True
+    [gpd.read_parquet(fname) for fname in tqdm(tile_files)], ignore_index=True
 )
 
 # Merge polygons that were split only because of tiling
@@ -40,7 +57,7 @@ combined['centx'] = combined["centroids"].x
 combined['centy'] = combined["centroids"].y
 combined_df = combined.drop(columns=["geometry", "centroids"])
 
-# Rename `"UniqueID_2023"` to `2023` with `int` type.
+# Rename `"UniqueID_2023"` to `2023`
 # Do this before melting to avoid allocating a huge string unnecessarily.
 rename_uid = {
     col: col.replace("UniqueID_", "")
@@ -85,14 +102,47 @@ def read_data(fname: Path, year: int):
 
 
 print("Merging in metadata")
-final = pd.concat(
+final_wide = pd.concat(
     combined_long.merge(read_data(fname, year), on=["UniqueID", "year"])
     for year, fname in tqdm(files.items())
 )
+
+# `pd.wide_to_long` expects the number to be at the end of the column name
+irr_type_rename = {}
+for i in range(1, 5):
+    irr_type_rename[f"IRR_TYP{i}PA"] = f"IRR_TYP_PA{i}"
+    irr_type_rename[f"IRR_TYP{i}PB"] = f"IRR_TYP_PB{i}"
+
+final_wide = final_wide.rename(columns=irr_type_rename)
+
+stubnames = ['CLASS', 'SUBCLASS', 'SPECOND', 'IRR_TYP_PA', 'IRR_TYP_PB', 'PCNT', 'ADOY']
+
+# Get season columns
+season_cols = [col for col in final_wide.columns 
+               if any(col.startswith(stub) and col[len(stub):].isdigit() 
+                      for stub in stubnames)]
+
+# Split the dataframe
+id_cols = ['parcel_id', 'year']
+df_to_melt = final_wide[id_cols + season_cols]
+df_other = final_wide[id_cols + [col for col in final_wide.columns 
+                                 if col not in season_cols and col not in id_cols]]
+
+# Melt with minimal ID columns
+final_long = pd.wide_to_long(
+    df_to_melt,
+    stubnames=stubnames,
+    i=id_cols,
+    j='season',
+    sep=''
+).reset_index()
+
+# Join back the other columns
+final_long = final_long.merge(df_other, on=id_cols, how='left')
 
 # Some sanity checks
 # county_counts = final.groupby(["parcel_id"])["COUNTY"].nunique()
 # if bad_rows := (county_counts[county_counts > 1]).size:
 #     raise ValueError(f"{bad_rows} parcels moved counties.")
 
-final.to_parquet(outdir / "crops_all_years.parq")
+final_long.to_parquet(outdir / "crops_all_years.parq")

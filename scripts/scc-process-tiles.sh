@@ -5,4 +5,8 @@
 #$ -o _logs/
 #$ -t 1-274
 
-pixi run python scripts/02-process-tile.py $SGE_TASK_ID
+pixi run python scripts/02-process-tile.py $SGE_TASK_ID \
+  --output-dir _results/tiles-output-sp \
+  --crs 'EPSG:26910' \
+  --precision 1.0 \
+  --morph-close 0.5
