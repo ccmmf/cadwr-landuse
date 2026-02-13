@@ -22,12 +22,19 @@ parser.add_argument(
     default=Path("/projectnb/dietzelab/ccmmf/LandIQ_data/LandIQ_shapefiles"),
     help="Root directory for LandIQ shapefiles",
 )
+parser.add_argument(
+    "--result-dir",
+    type=Path,
+    default=Path("_results") / "tiles-input",
+    help="Root directory for LandIQ shapefiles",
+)
 args = parser.parse_args()
 landiq_root_dir = args.landiq_root_dir
 
-result_dir = Path("_results") / "tiles-input"
+result_dir = args.result_dir
 result_dir.mkdir(exist_ok=True, parents=True)
 
+f2016 = landiq_root_dir / "i15_Crop_Mapping_2016_SHP" / "i15_Crop_Mapping_2016.shp"
 f2018 = landiq_root_dir / "i15_Crop_Mapping_2018_SHP" / "i15_Crop_Mapping_2018.shp"
 f2019 = landiq_root_dir / "i15_Crop_Mapping_2019_SHP" / "i15_Crop_Mapping_2019.shp"
 f2020 = landiq_root_dir / "i15_Crop_Mapping_2020_SHP" / "i15_Crop_Mapping_2020.shp"
@@ -44,6 +51,7 @@ f2023 = (
 )
 
 files = {
+    "2016": f2016,
     "2018": f2018,
     "2019": f2019,
     "2020": f2020,
