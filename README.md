@@ -11,7 +11,7 @@ The LandIQ dataset provides annual field-level crop identification for all agric
 
 **Key features of the harmonized dataset:**
 
-- **~3.7 million individual parcels of land** tracked across 6 years (2018–2023)
+- **~1.5 million individual parcels of land** tracked across 6 years (2018–2023)
 - **Consistent parcel ID** linking fields across years despite boundary changes
 - **Multi-season crop tracking** supporting up to 4 crop cycles per year
 - **PFT classification** mapping 200+ crop types to Plant Functional Types for ecosystem modeling
@@ -82,6 +82,22 @@ The harmonization pipeline scripts are as follows:
     These are stored in `results/tiles-output` (e.g., `_results/tiles-output/x00_y19.parq`).
     This script is designed to be run naively in parallel.
     On the BU cluster, we recommend running it as an array job (see the `scripts/scc-process-tiles.sh` script); this will spawn 274 jobs and should finish in 2-2.5 hours (most jobs will be much shorter, but the longest jobs will take this long).
+
+    By default, slight imperfections in the original mapping data cause this approach to identify a lot of tiny new parcels that do not reflect real land cover changes ("slivers").
+    To mitigate this we apply two spatial "smoothing" operations to the polygons in each tile before merging:
+
+    (0) Since these operations operate on real distances and areas (rather than units of degrees), we first transform the data to an equal-area projection (UTM Zone 10N; EPSG 26910).
+    This is controlled by the `--crs` argument.
+
+    (1) First, we round the individual polygon coordinates to the nearest `X` meters
+    This effectively "snaps" polygon vertices to a regular grid with resolution `X m ✗ X m`, which closes some of the artificial gaps.
+    The value of `X` here is controlled by the `--precision` argument.
+
+    (2) Second, we smooth the polygon edges by applying a positive buffer of `Y` meters and then immediately applying a negative buffer of `Y` meters ("morphological closing").
+    The size of the buffer is controlled by the `--morph-close` argument.
+
+    The current workflow uses `--precision 1.0` and `morph-close 0.5`.
+    This reduces the number of polygons in the final result from ~3.7 million to ~1.5 million.
 
 3. `scripts/03-combine-finalize.py` --- This script concatenates all of the tiles from the previous step, merges duplicate rows (and unions the corresponding polygons; this deals with polygons that have been arbitrarily split by our tiling), creates the GeoPackage file with all the individual parcels, and finally merges the parcel UniqueIDs with each of the original LandIQ datasets to create a single, _very_ long but tidy dataset.
 
