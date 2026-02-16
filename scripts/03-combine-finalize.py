@@ -22,6 +22,7 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
+# args = parser.parse_args(["--tile-dir", "_results/w2016/tiles-out/", "--outdir", "_results/w2016/final/"])
 
 landiq_root_dir = args.landiq_root_dir
 tile_files = sorted(args.tile_dir.glob("*.parq"))
@@ -48,6 +49,7 @@ combined = (
 )
 
 combined.insert(0, "parcel_id", range(len(combined)))
+combined["UniqueID_2016"] = combined["UniqueID_2016"].astype(str)
 combined.to_file(outdir / "parcels.gpkg", driver="GPKG")
 
 # Now, build a long table of the metadata
@@ -98,6 +100,9 @@ def read_data(fname: Path, year: int):
     # Figure out which columns to read based on the year
     read_cols = keep_cols.loc[keep_cols[str(year)] == 1]["name"]
     dat = gpd.read_file(fname, use_arrow=True, ignore_geometry=True, columns=read_cols)
+    if year == 2016:
+        dat = dat.reset_index(names="UniqueID")
+        dat["UniqueID"] = dat["UniqueID"].astype(str)
     dat["year"] = year
     return dat
 

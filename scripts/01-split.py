@@ -29,6 +29,7 @@ parser.add_argument(
     help="Root directory for LandIQ shapefiles",
 )
 args = parser.parse_args()
+# args = parser.parse_args(["--landiq-root-dir", "/projectnb/dietzelab/ccmmf/LandIQ_data/LandIQ_shapefiles", "--result-dir", "_results/w2016/tiles-in"])
 landiq_root_dir = args.landiq_root_dir
 
 result_dir = args.result_dir
@@ -64,12 +65,18 @@ files = {
 def read_shp(fname: Path, suffix: str):
     # For the combined index file, subset to just the uniqueID and geometry.
     # We'll merge everything later.
-    return (
+    idcol = f"UniqueID_{suffix}"
+    dat = (
         gpd.read_file(fname, use_arrow=True, columns=["UniqueID", "geometry"])
         .explode(index_parts=False)
         .reset_index(drop=True)
-        .rename(columns={"UniqueID": f"UniqueID_{suffix}"})
+        .rename(columns={"UniqueID": idcol})
     )
+    # Year 2016 and earlier don't include a UniqueID column. So we create one 
+    # from the default pandas index (row number).
+    if idcol not in dat:
+        dat = dat.reset_index(names=idcol)
+    return dat
 
 
 logger.info("Reading all data")
