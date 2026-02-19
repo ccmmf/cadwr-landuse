@@ -7,6 +7,6 @@
 
 pixi run python scripts/02-process-tile.py $SGE_TASK_ID \
   --output-dir _results/tiles-output-sp \
-  --crs 'EPSG:26910' \
+  --crs 'EPSG:3310' \
   --precision 1.0 \
   --morph-close 0.5
