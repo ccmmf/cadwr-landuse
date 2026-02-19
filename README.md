@@ -86,7 +86,7 @@ The harmonization pipeline scripts are as follows:
     By default, slight imperfections in the original mapping data cause this approach to identify a lot of tiny new parcels that do not reflect real land cover changes ("slivers").
     To mitigate this we apply two spatial "smoothing" operations to the polygons in each tile before merging:
 
-    (0) Since these operations operate on real distances and areas (rather than units of degrees), we first transform the data to an equal-area projection (UTM Zone 10N; EPSG 26910).
+    (0) Since these operations operate on real distances and areas (rather than units of degrees), we first transform the data to an equal-area projection (California Albers Equal Area; EPSG 3310).
     This is controlled by the `--crs` argument.
 
     (1) First, we round the individual polygon coordinates to the nearest `X` meters

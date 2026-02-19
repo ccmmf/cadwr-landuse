@@ -14,7 +14,7 @@ def _preprocess_dat(dat: gpd.GeoDataFrame, crs, precision, morph_close):
     """Apply preprocessing operations to a GeoDataFrame."""
     if crs is not None:
         # NOTE: For the spatial operations below to have sensical units, pick a
-        # CRS based on an equal area projection (e.g., UTM; Albers Equal Area)
+        # CRS based on an equal area projection (e.g., California Albers Equal Area)
         dat = dat.to_crs(crs)
     if precision is not None:
         # `set_precision` rounds the coordinates of the polygons to the nearest

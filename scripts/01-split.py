@@ -116,10 +116,6 @@ def clip_to_tile(
     dsub = dsub[~dsub.geometry.is_empty]
     if dsub.empty:
         return None
-    dsub["geometry"] = dsub.geometry.intersection(tgeom)
-    dsub = dsub[~dsub.geometry.is_empty]
-    if dsub.empty:
-        return None
     outdir.mkdir(exist_ok=True, parents=True)
     dsub.to_parquet(outfile)
     return outfile
@@ -129,8 +125,3 @@ logger.info("Splitting data into tiles")
 for tile in tqdm(tiles, desc="Tiles"):
     for year, dat in tqdm(dat_all.items(), desc="Years", leave=False):
         clip_to_tile(dat, year, tile, result_dir=result_dir)
-
-# Loop over folders and delete empty ones
-# for tdir in (Path("_results") / "tiles-input").iterdir():
-#     if not any(tdir.iterdir()):
-#         tdir.rmdir()
