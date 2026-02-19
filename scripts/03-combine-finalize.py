@@ -103,7 +103,7 @@ def read_data(fname: Path, year: int):
 
 print("Merging in metadata")
 final_wide = pd.concat(
-    combined_long.merge(read_data(fname, year), on=["UniqueID", "year"])
+    combined_long.merge(read_data(fname, year), on=["UniqueID", "year"], how="left")
     for year, fname in tqdm(files.items())
 )
 
