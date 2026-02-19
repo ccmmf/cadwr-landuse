@@ -107,53 +107,43 @@ final_wide = pd.concat(
     for year, fname in tqdm(files.items())
 )
 
+COLUMN_TYPES = {
+    "SUBCLASS": "Int64",
+    "PCNT": "Int64",
+    "ADOY": "Int64",
+    "YR_PLANTED": "Int64",
+    "ADOY_SEN": "Int64",
+    "ADOY_EMRG": "Int64",
+    "ACRES": "float64",
+}
+
 numeric_pattern_cols = [
     "SUBCLASS",
     "PCNT",
     "ADOY",
+    "YR_PLANTED",
+    "ADOY_SEN",
+    "ADOY_EMRG",
 ]
 numeric_cols = [
     col
     for col in final_wide.columns
-    if any(col.startswith(pattern) for pattern in numeric_pattern_cols)
-] + ["ACRES", "MAIN_CROP_"]
-
-for col in numeric_cols:
-    if col in final_wide.columns:
-        final_wide[col] = final_wide[col].replace(r"^\*+$", None, regex=True)
-
-SAMPLE_SIZE = 1000
-column_types = {}
+    if any(col.startswith(p) for p in numeric_pattern_cols)
+] + ["ACRES"]
 
 for col in numeric_cols:
     if col not in final_wide.columns:
         continue
-    sample = (
-        final_wide[col]
-        .dropna()
-        .sample(n=min(SAMPLE_SIZE, len(final_wide[col].dropna())), random_state=42)
-    )
-    sample_str = sample.astype(str)
-    can_be_int = all(
-        val.replace(".", "", 1).replace("-", "", 1).isdigit() and "." not in val
-        for val in sample_str
-        if val != "None" and val != "nan"
-    )
-    can_be_float = all(
-        val.replace(".", "", 1).replace("-", "", 1).isdigit()
-        for val in sample_str
-        if val != "None" and val != "nan"
-    )
-    if can_be_int:
-        column_types[col] = "Int64"
-        final_wide[col] = pd.to_numeric(final_wide[col], errors="coerce").astype(
-            "Int64"
-        )
-    elif can_be_float:
-        column_types[col] = "float64"
-        final_wide[col] = pd.to_numeric(final_wide[col], errors="coerce")
+    # Replace sentinel values (`*`, `**`, `***` etc.) with `None`
+    final_wide[col] = final_wide[col].replace(r"^\*+$", None, regex=True)
 
-print(f"Column types: {column_types}")
+    # Special case: PCNT value "00" means 100%
+    if col == "PCNT":
+        final_wide[col] = final_wide[col].replace("00", "100")
+
+    final_wide[col] = pd.to_numeric(
+        final_wide[col], errors="coerce", dtype=COLUMN_TYPES.get(col, "float64")
+    )
 
 # `pd.wide_to_long` expects the number to be at the end of the column name
 irr_type_rename = {}
