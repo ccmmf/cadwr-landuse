@@ -14,12 +14,8 @@ parser.add_argument(
     default=Path("/projectnb/dietzelab/ccmmf/LandIQ_data/LandIQ_shapefiles"),
     help="Root directory for LandIQ shapefiles",
 )
-parser.add_argument(
-    "--tile-dir", type=Path, default=Path("_results/tiles-output-sp")
-)
-parser.add_argument(
-    "--outdir", type=Path, default=Path("_results/final-tiles-sp")
-)
+parser.add_argument("--tile-dir", type=Path, default=Path("_results/tiles-output-sp"))
+parser.add_argument("--outdir", type=Path, default=Path("_results/final-tiles-sp"))
 
 args = parser.parse_args()
 # args = parser.parse_args(["--tile-dir", "_results/w2016/tiles-out/", "--outdir", "_results/w2016/final/"])
@@ -50,13 +46,16 @@ combined = (
 
 combined.insert(0, "parcel_id", range(len(combined)))
 combined["UniqueID_2016"] = combined["UniqueID_2016"].astype(str)
+
+SQ_METERS_PER_ACRE = 4046.8564224
+combined["ACRES"] = combined.geometry.area / SQ_METERS_PER_ACRE
 combined.to_file(outdir / "parcels.gpkg", driver="GPKG")
 
 # Now, build a long table of the metadata
 # First, calculate the centroids.
-combined['centroids'] = combined.geometry.centroid
-combined['centx'] = combined["centroids"].x
-combined['centy'] = combined["centroids"].y
+combined["centroids"] = combined.geometry.centroid
+combined["centx"] = combined["centroids"].x
+combined["centy"] = combined["centroids"].y
 combined_df = combined.drop(columns=["geometry", "centroids"])
 
 # Rename `"UniqueID_2023"` to `2023`
@@ -109,9 +108,47 @@ def read_data(fname: Path, year: int):
 
 print("Merging in metadata")
 final_wide = pd.concat(
-    combined_long.merge(read_data(fname, year), on=["UniqueID", "year"])
+    combined_long.merge(read_data(fname, year), on=["UniqueID", "year"], how="left")
     for year, fname in tqdm(files.items())
 )
+
+COLUMN_TYPES = {
+    "SUBCLASS": "Int64",
+    "PCNT": "Int64",
+    "ADOY": "Int64",
+    "YR_PLANTED": "Int64",
+    "ADOY_SEN": "Int64",
+    "ADOY_EMRG": "Int64",
+    "ACRES": "float64",
+}
+
+numeric_pattern_cols = [
+    "SUBCLASS",
+    "PCNT",
+    "ADOY",
+    "YR_PLANTED",
+    "ADOY_SEN",
+    "ADOY_EMRG",
+]
+numeric_cols = [
+    col
+    for col in final_wide.columns
+    if any(col.startswith(p) for p in numeric_pattern_cols)
+] + ["ACRES"]
+
+for col in numeric_cols:
+    if col not in final_wide.columns:
+        continue
+    # Replace sentinel values (`*`, `**`, `***` etc.) with `None`
+    final_wide[col] = final_wide[col].replace(r"^\*+$", None, regex=True)
+
+    # Special case: PCNT value "00" means 100%
+    if col == "PCNT":
+        final_wide[col] = final_wide[col].replace("00", "100")
+
+    final_wide[col] = pd.to_numeric(
+        final_wide[col], errors="coerce", dtype=COLUMN_TYPES.get(col, "float64")
+    )
 
 # `pd.wide_to_long` expects the number to be at the end of the column name
 irr_type_rename = {}
@@ -121,30 +158,34 @@ for i in range(1, 5):
 
 final_wide = final_wide.rename(columns=irr_type_rename)
 
-stubnames = ['CLASS', 'SUBCLASS', 'SPECOND', 'IRR_TYP_PA', 'IRR_TYP_PB', 'PCNT', 'ADOY']
+stubnames = ["CLASS", "SUBCLASS", "SPECOND", "IRR_TYP_PA", "IRR_TYP_PB", "PCNT", "ADOY"]
 
 # Get season columns
-season_cols = [col for col in final_wide.columns 
-               if any(col.startswith(stub) and col[len(stub):].isdigit() 
-                      for stub in stubnames)]
+season_cols = [
+    col
+    for col in final_wide.columns
+    if any(col.startswith(stub) and col[len(stub) :].isdigit() for stub in stubnames)
+]
 
 # Split the dataframe
-id_cols = ['parcel_id', 'year']
+id_cols = ["parcel_id", "year"]
 df_to_melt = final_wide[id_cols + season_cols]
-df_other = final_wide[id_cols + [col for col in final_wide.columns 
-                                 if col not in season_cols and col not in id_cols]]
+df_other = final_wide[
+    id_cols
+    + [
+        col
+        for col in final_wide.columns
+        if col not in season_cols and col not in id_cols
+    ]
+]
 
 # Melt with minimal ID columns
 final_long = pd.wide_to_long(
-    df_to_melt,
-    stubnames=stubnames,
-    i=id_cols,
-    j='season',
-    sep=''
+    df_to_melt, stubnames=stubnames, i=id_cols, j="season", sep=""
 ).reset_index()
 
 # Join back the other columns
-final_long = final_long.merge(df_other, on=id_cols, how='left')
+final_long = final_long.merge(df_other, on=id_cols, how="left")
 
 # Some sanity checks
 # county_counts = final.groupby(["parcel_id"])["COUNTY"].nunique()
