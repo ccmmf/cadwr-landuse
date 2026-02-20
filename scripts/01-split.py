@@ -6,6 +6,7 @@ import logging
 from functools import reduce
 
 import geopandas as gpd
+import pandas as pd
 import numpy as np
 from shapely import box
 from tqdm import tqdm
@@ -29,7 +30,7 @@ parser.add_argument(
     help="Root directory for LandIQ shapefiles",
 )
 args = parser.parse_args()
-# args = parser.parse_args(["--landiq-root-dir", "/projectnb/dietzelab/ccmmf/LandIQ_data/LandIQ_shapefiles", "--result-dir", "_results/w2016/tiles-in"])
+# args = parser.parse_args(["--landiq-root-dir", "~/data/LandIQ_raw/", "--result-dir", "_results/w2016/tiles-in"])
 landiq_root_dir = args.landiq_root_dir
 
 result_dir = args.result_dir
@@ -72,7 +73,7 @@ def read_shp(fname: Path, suffix: str):
         .reset_index(drop=True)
         .rename(columns={"UniqueID": idcol})
     )
-    # Year 2016 and earlier don't include a UniqueID column. So we create one 
+    # Year 2016 and earlier don't include a UniqueID column. So we create one
     # from the default pandas index (row number).
     if idcol not in dat:
         dat = dat.reset_index(names=idcol)
@@ -86,6 +87,9 @@ dat_all = {year: read_shp(fname, year) for year, fname in tqdm(files.items())}
 logger.info("Harmonizing CRS")
 common_crs = dat_all["2023"].crs
 dat_all = {year: data.to_crs(common_crs) for year, data in tqdm(dat_all.items())}
+
+# Get the UniqueIDs for each year. We will test this later.
+uids = {year: data[f"UniqueID_{year}"].unique() for year, data in dat_all.items()}
 
 # Get the total bounding box
 logger.info("Determining overall bounding box")
@@ -140,3 +144,27 @@ logger.info("Splitting data into tiles")
 for tile in tqdm(tiles, desc="Tiles"):
     for year, dat in tqdm(dat_all.items(), desc="Years", leave=False):
         clip_to_tile(dat, year, tile, result_dir=result_dir)
+
+logger.info("Validating that all unique IDs are in the tiles")
+
+tile_uids = {}
+for tile in tqdm(tiles, desc="Reading tiles"):
+    tid = tile["tile_id"]
+    for year in dat_all.keys():
+        tile_file = result_dir / tid / f"{year}.parq"
+        if tile_file.exists():
+            uid_col = f"UniqueID_{year}"
+            tile_dat = pd.read_parquet(tile_file, columns=[uid_col])
+            tile_uids.setdefault(year, set()).update(tile_dat[uid_col].tolist())
+
+for year in dat_all:
+    expected = set(uids[year])
+    actual = tile_uids.get(year, set())
+    if actual == expected:
+        logger.info(f"Year {year}: ✓ All {len(expected)} unique IDs accounted for")
+    else:
+        missing = expected - actual
+        extra = actual - expected
+        logger.error(
+            f"Year {year}: Mismatch! Missing: {len(missing)}, Extra: {len(extra)}"
+        )
