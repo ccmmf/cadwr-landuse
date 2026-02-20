@@ -2,30 +2,27 @@
 
 import argparse
 from pathlib import Path
-from functools import reduce
 import logging
 
 import geopandas as gpd
 
+# Fraction of area difference allowed before warning
+CHECK_AREA_FRACTION = 0.03
+
 logger = logging.getLogger(__name__)
 
 
-def _preprocess_dat(dat: gpd.GeoDataFrame, crs, precision, morph_close):
+def _preprocess_dat(dat: gpd.GeoDataFrame, precision, morph_close):
     """Apply preprocessing operations to a GeoDataFrame."""
-    if crs is not None:
-        # NOTE: For the spatial operations below to have sensical units, pick a
-        # CRS based on an equal area projection (e.g., California Albers Equal Area)
-        dat = dat.to_crs(crs)
+    if precision is None and morph_close is None:
+        # No-op. Return dat.
+        return dat
     if precision is not None:
-        # `set_precision` rounds the coordinates of the polygons to the nearest
-        # `precision`. This effectively "snaps" polygon vertices to a regular grid whose
-        # resolution is set by `precision`.
         dat["geometry"] = dat.set_precision(precision)
     if morph_close is not None:
-        # Expand a polygon by `morph_close`, then shrink it by `morph_close`.
-        # In practice, this smoothes out irregular polygon edges (spikes, etc.).
         dat["geometry"] = dat.buffer(morph_close).buffer(-morph_close)
-        dat["geometry"] = dat.make_valid()
+    # We did stuff, so we should make sure all the geometries are still valid.
+    dat["geometry"] = dat.make_valid()
     return dat
 
 
@@ -46,11 +43,50 @@ def process_tile(
 
     dat_dict = {fname.stem: gpd.read_parquet(fname) for fname in input_files}
 
-    processed = [
-        _preprocess_dat(dat, crs, precision, morph_close) for dat in dat_dict.values()
-    ]
+    if crs is not None:
+        dat_dict = {year: df.to_crs(crs) for year, df in dat_dict.items()}
 
-    combined = reduce(lambda d1, d2: gpd.overlay(d1, d2, how="union"), processed)
+    input_areas = {year: df.geometry.area.sum() for year, df in dat_dict.items()}
+
+    # Preprocess and check for valid geometries
+    processed = []
+    for year, dat in dat_dict.items():
+        processed_year = _preprocess_dat(dat, precision, morph_close)
+        invalid = (
+            ~processed_year.is_valid
+            | processed_year.geometry.isna()
+            | processed_year.geometry.is_empty
+        )
+        if invalid.any():
+            logger.warning(
+                f"Tile {tile_dir.name}: Removing {invalid.sum()} invalid geometries in year {year}"
+            )
+            processed_year = processed_year[~invalid]
+        processed.append(processed_year)
+
+    # Apply overlay iteratively to the data frames.
+    def reduce_overlay(dfs):
+        result = dfs[0]
+        for df in dfs[1:]:
+            result = gpd.overlay(result, df, how="union")
+        return result
+
+    combined = reduce_overlay(processed)
+
+    # Check output area is within CHECK_AREA_FRACTION of each year's input area
+    total_output_area = combined.geometry.area.sum()
+    for year, input_area in input_areas.items():
+        area_diff_frac = abs(total_output_area - input_area) / input_area
+        if area_diff_frac > CHECK_AREA_FRACTION:
+            logger.warning(
+                f"Tile {tile_dir.name}: Year {year}: Output area differs by {area_diff_frac:.2%} "
+                f"(input: {input_area:.2f}, output: {total_output_area:.2f})"
+            )
+        else:
+            logger.info(
+                f"Tile {tile_dir.name}: Year {year}: Area check passed ({area_diff_frac:.2%} diff)"
+            )
+
     combined.to_parquet(result_file)
     return result_file
 
