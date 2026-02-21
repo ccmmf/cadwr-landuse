@@ -5,11 +5,10 @@
 #$ -o _logs/
 #$ -t 1-274
 
-OUTDIR=${1:-"_results"}
+OUTDIR_ROOT=${1:-"_results/v4.1"}
 
 pixi run python scripts/02-process-tile.py $SGE_TASK_ID \
-  --input-dir "$OUTDIR/tiles-in" \
-  --output-dir "$OUTDIR/tiles-out" \
+  --outdir-root "$OUTDIR_ROOT" \
   --crs 'EPSG:3310' \
-  --precision 1.0 \
-  --morph-close 0.5
+  --precision 10.0 \
+  --morph-close 5.0

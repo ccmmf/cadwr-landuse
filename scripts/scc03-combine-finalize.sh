@@ -4,8 +4,7 @@
 #$ -N liq3-final
 #$ -o _logs/
 
-OUTDIR=${1:-"_results"}
+OUTDIR_ROOT=${1:-"_results/v4.1"}
 
 pixi run python scripts/03-combine-finalize.py \
-  --tile-dir "$OUTDIR/tiles-out" \
-  --outdir "$OUTDIR/final"
+  --outdir-root "$OUTDIR_ROOT"

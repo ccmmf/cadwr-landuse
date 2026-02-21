@@ -24,16 +24,16 @@ parser.add_argument(
     help="Root directory for LandIQ shapefiles",
 )
 parser.add_argument(
-    "--result-dir",
+    "--outdir-root",
     type=Path,
-    default=Path("_results") / "tiles-input",
-    help="Root directory for LandIQ shapefiles",
+    default=Path("_results/v4.1"),
+    help="Root directory for all outputs",
 )
 args = parser.parse_args()
-# args = parser.parse_args(["--landiq-root-dir", "~/data/LandIQ_raw/", "--result-dir", "_results/w2016/tiles-in"])
+# args = parser.parse_args(["--landiq-root-dir", "~/data/LandIQ_raw/"])
 landiq_root_dir = args.landiq_root_dir
 
-result_dir = args.result_dir
+result_dir = args.outdir_root / "01-tiles-by-year"
 result_dir.mkdir(exist_ok=True, parents=True)
 
 f2016 = landiq_root_dir / "i15_Crop_Mapping_2016_SHP" / "i15_Crop_Mapping_2016.shp"

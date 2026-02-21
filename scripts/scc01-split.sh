@@ -4,7 +4,7 @@
 #$ -N liq1-split
 #$ -o _logs/
 
-OUTDIR=${1:-"_results"}
+OUTDIR_ROOT=${1:-"_results/v4.1"}
 
 pixi run python scripts/01-split.py \
-  --result-dir "$OUTDIR/tiles-in"
+  --outdir-root "$OUTDIR_ROOT"

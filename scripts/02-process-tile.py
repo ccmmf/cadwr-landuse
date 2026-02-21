@@ -97,16 +97,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process a single tile")
     parser.add_argument("tile_idx", type=int, help="1-based tile index")
     parser.add_argument(
-        "--input-dir",
+        "--outdir-root",
         type=Path,
-        default=Path("_results/tiles-input"),
-        help="Input directory containing tile subdirectories",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=Path("_results/tiles-output"),
-        help="Output directory for processed tiles",
+        default=Path("_results/v4.1"),
+        help="Root directory for all outputs",
     )
     parser.add_argument(
         "--crs",
@@ -128,9 +122,12 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    input_dir = args.outdir_root / "01-tiles-by-year"
+    output_dir = args.outdir_root / "02-tiles-combined"
+
     tidx = args.tile_idx - 1
 
-    all_tiles = sorted(args.input_dir.iterdir())
+    all_tiles = sorted(input_dir.iterdir())
     if tidx >= len(all_tiles):
         raise IndexError(
             f"Argument {args.tile_idx} (idx {tidx}) >= len(all_tiles)={len(all_tiles)}."
@@ -139,7 +136,7 @@ if __name__ == "__main__":
     logger.info(f"Processing tile {tile}")
     process_tile(
         tile,
-        args.output_dir,
+        output_dir,
         crs=args.crs,
         precision=args.precision,
         morph_close=args.morph_close,

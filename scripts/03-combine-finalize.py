@@ -4,8 +4,11 @@ from pathlib import Path
 import geopandas as gpd
 import pandas as pd
 from tqdm import tqdm
-
+import logging
 import argparse
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser(description="Recombine tiles and finalize")
 parser.add_argument(
@@ -14,16 +17,21 @@ parser.add_argument(
     default=Path("/projectnb/dietzelab/ccmmf/LandIQ_data/LandIQ_shapefiles"),
     help="Root directory for LandIQ shapefiles",
 )
-parser.add_argument("--tile-dir", type=Path, default=Path("_results/tiles-output-sp"))
-parser.add_argument("--outdir", type=Path, default=Path("_results/final-tiles-sp"))
+parser.add_argument(
+    "--outdir-root",
+    type=Path,
+    default=Path("_results/v4.1"),
+    help="Root directory for all outputs",
+)
 
 args = parser.parse_args()
-# args = parser.parse_args(["--tile-dir", "_results/w2016/tiles-out/", "--outdir", "_results/w2016/final/"])
+# args = parser.parse_args(["--outdir-root", "_results/v4.1"])
 
 landiq_root_dir = args.landiq_root_dir
-tile_files = sorted(args.tile_dir.glob("*.parq"))
+tile_dir = args.outdir_root / "02-tiles-combined"
+tile_files = sorted(tile_dir.glob("*.parq"))
 
-outdir = args.outdir
+outdir = args.outdir_root / "03-final"
 outdir.mkdir(exist_ok=True, parents=True)
 
 # Read all the files and combine into a single table
