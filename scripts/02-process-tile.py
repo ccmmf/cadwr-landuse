@@ -15,13 +15,12 @@ logger = logging.getLogger(__name__)
 def _preprocess_dat(dat: gpd.GeoDataFrame, precision, morph_close):
     """Apply preprocessing operations to a GeoDataFrame."""
     if precision is None and morph_close is None:
-        # No-op. Return dat.
         return dat
-    if precision is not None:
-        dat["geometry"] = dat.set_precision(precision)
     if morph_close is not None:
         dat["geometry"] = dat.buffer(morph_close).buffer(-morph_close)
-    # We did stuff, so we should make sure all the geometries are still valid.
+    if precision is not None:
+        dat["geometry"] = dat.set_precision(precision)
+    dat["geometry"] = dat.buffer(0)
     dat["geometry"] = dat.make_valid()
     return dat
 
@@ -103,6 +102,12 @@ if __name__ == "__main__":
         help="Root directory for all outputs",
     )
     parser.add_argument(
+        "--tile-output-dir",
+        type=Path,
+        default=None,
+        help="Override output directory for combined tiles (default: {outdir-root}/02-tiles-combined)",
+    )
+    parser.add_argument(
         "--crs",
         type=str,
         default=None,
@@ -123,7 +128,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     input_dir = args.outdir_root / "01-tiles-by-year"
-    output_dir = args.outdir_root / "02-tiles-combined"
+    output_dir = (
+        args.tile_output_dir
+        if args.tile_output_dir is not None
+        else args.outdir_root / "02-tiles-combined"
+    )
 
     tidx = args.tile_idx - 1
 

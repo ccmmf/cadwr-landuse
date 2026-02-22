@@ -85,6 +85,12 @@ def main():
         help="Root directory for all outputs (default: _results/v4.1)",
     )
     parser.add_argument(
+        "--tile-output-dir",
+        type=Path,
+        default=None,
+        help="Override output directory for combined tiles (default: {outdir-root}/02-tiles-combined)",
+    )
+    parser.add_argument(
         "--crs",
         type=str,
         default=None,
@@ -99,13 +105,17 @@ def main():
     parser.add_argument(
         "--morph-close",
         type=float,
-        default=5.0,
-        help="Buffer distance for morphological closing operation (default: 5.0)",
+        default=None,
+        help="Buffer distance for morphological closing operation",
     )
     args = parser.parse_args()
 
     input_dir = args.outdir_root / "01-tiles-by-year"
-    output_dir = args.outdir_root / "02-tiles-combined"
+    output_dir = (
+        args.tile_output_dir
+        if args.tile_output_dir is not None
+        else args.outdir_root / "02-tiles-combined"
+    )
 
     tiles = sorted(input_dir.iterdir())
     num_tiles = len(tiles)
