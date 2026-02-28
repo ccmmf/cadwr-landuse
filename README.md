@@ -7,11 +7,11 @@ This repository contains scripts, documentation, and lookup tables for processin
 
 ## Overview
 
-The LandIQ dataset provides annual field-level crop identification for all agricultural land in California, derived from satellite imagery (Landsat, Sentinel-2) and verified through ground surveys. This repository harmonizes data from 2018-2023 into a consistent format suitable for carbon cycle modeling at both field and regional scales.
+The LandIQ dataset provides annual field-level crop identification for all agricultural land in California, derived from satellite imagery (Landsat, Sentinel-2) and verified through ground surveys. This repository harmonizes data from 2016–2023 into a consistent format suitable for carbon cycle modeling at both field and regional scales.
 
 **Key features of the harmonized dataset:**
 
-- **~1.5 million individual parcels of land** tracked across 6 years (2018–2023)
+- **~600,000 individual parcels of land** tracked across 8 years (2016, 2018–2023)
 - **Consistent parcel ID** linking fields across years despite boundary changes
 - **Multi-season crop tracking** supporting up to 4 crop cycles per year
 - **PFT classification** mapping 200+ crop types to Plant Functional Types for ecosystem modeling
@@ -67,7 +67,7 @@ For the actual implementation, we use Python's geopandas library, which provides
 
 The harmonization pipeline scripts are as follows:
 
-1. `scripts/01-split.py` --- This reads all of the raw LandIQ data, determines the complete bounding box, harmonizes the CRS across the data (we use the CRS of the most recent data), and splits the data into regular tiles, storing each tile in a set of `geoparquet` files --- one for each year (in `_results/tiles-input`; e.g., `_results/tiles-input/x00_y19/{2018.parq, 2019.parq, 2020.parq, ...}`).
+1. `scripts/01-split.py` --- This reads all of the raw LandIQ data, determines the complete bounding box, harmonizes the CRS across the data (we use the CRS of the most recent data), and splits the data into regular tiles, storing each tile in a set of `geoparquet` files --- one for each year (in `_results/v4.1/01-tiles-by-year`; e.g., `_results/v4.1/01-tiles-by-year/x00_y19/{2018.parq, 2019.parq, 2020.parq, ...}`).
     This script should run in less than a minute on a typical modern computer (or single HPC node) and does not require parallelization.
     This produces 274 non-empty tiles.
 
@@ -79,32 +79,38 @@ The harmonization pipeline scripts are as follows:
     1234568         NULL            NULL            ...     POLYGON[<...>]
     ```
     
-    These are stored in `results/tiles-output` (e.g., `_results/tiles-output/x00_y19.parq`).
+    These are stored in `_results/v4.1/02-tiles-combined` (e.g., `_results/v4.1/02-tiles-combined/x00_y19.parq`).
     This script is designed to be run naively in parallel.
-    On the BU cluster, we recommend running it as an array job (see the `scripts/scc-process-tiles.sh` script); this will spawn 274 jobs and should finish in 2-2.5 hours (most jobs will be much shorter, but the longest jobs will take this long).
+    On the SCC cluster, we recommend running it as an array job (see the `scripts/scc02-process-tiles.sh` script); this will spawn jobs for each of the 274 non-empty tiles.
 
     By default, slight imperfections in the original mapping data cause this approach to identify a lot of tiny new parcels that do not reflect real land cover changes ("slivers").
-    To mitigate this we apply two spatial "smoothing" operations to the polygons in each tile before merging:
+    To mitigate this we apply spatial preprocessing operations to the polygons in each tile before merging:
 
     (0) Since these operations operate on real distances and areas (rather than units of degrees), we first transform the data to an equal-area projection (California Albers Equal Area; EPSG 3310).
     This is controlled by the `--crs` argument.
 
-    (1) First, we round the individual polygon coordinates to the nearest `X` meters
-    This effectively "snaps" polygon vertices to a regular grid with resolution `X m ✗ X m`, which closes some of the artificial gaps.
-    The value of `X` here is controlled by the `--precision` argument.
+    (1) Optionally, we apply a morphological closing operation (positive buffer followed by negative buffer) to smooth polygon edges.
+    This is controlled by the `--morph-close` argument and is disabled by default.
 
-    (2) Second, we smooth the polygon edges by applying a positive buffer of `Y` meters and then immediately applying a negative buffer of `Y` meters ("morphological closing").
-    The size of the buffer is controlled by the `--morph-close` argument.
+    (2) We run `make_valid()` to resolve any invalid geometries (self-intersections, etc.).
 
-    The current workflow uses `--precision 1.0` and `morph-close 0.5`.
-    This reduces the number of polygons in the final result from ~3.7 million to ~1.5 million.
+    (3) We round the individual polygon coordinates to the nearest `X` meters.
+    This effectively "snaps" polygon vertices to a regular grid with resolution `X m × X m`, which closes some of the artificial gaps.
+    The value of `X` here is controlled by the `--precision` argument (default: 10 meters).
 
-3. `scripts/03-combine-finalize.py` --- This script concatenates all of the tiles from the previous step, merges duplicate rows (and unions the corresponding polygons; this deals with polygons that have been arbitrarily split by our tiling), creates the GeoPackage file with all the individual parcels, and finally merges the parcel UniqueIDs with each of the original LandIQ datasets to create a single, _very_ long but tidy dataset.
+    (4) Finally, we apply `buffer(0)` to resolve any invalid geometries created by the precision snapping step.
+
+    The default workflow uses `--precision 10` (10m precision snapping) with `--crs EPSG:3310` (California Albers Equal Area).
+    Morphological closing is disabled by default (`--morph-close` not specified).
+
+3. `scripts/03a-combine-parcels.py` --- This script concatenates all of the tiles from the previous step, merges duplicate rows (and unions the corresponding polygons; this deals with polygons that have been arbitrarily split by our tiling), and creates the GeoPackage files with all the individual parcels.
+
+4. `scripts/03b-finalize-crops.py` --- This script reads the parcels from the previous step, merges the parcel UniqueIDs with each of the original LandIQ datasets, and creates a single, _very_ long but tidy dataset.
 
 At the end of this pipeline, we have two files:
 
 1. `parcels.gpkg` --- The individual parcel map (each row has a unique `parcel_id`, a geometry, and the mapping to each year's `UniqueID`).
-2. `crops_all_years.parq` --- The LandIQ complete attribute table for every parcel (there will be up to 6 rows for every `parcel_id` --- one per year).
+2. `crops_all_years.parq` --- The LandIQ complete attribute table for every parcel (there will be up to 6 rows for every `parcel_id` --- one per year), stored in Parquet format.
 
 ## Repository Structure
 
@@ -121,7 +127,8 @@ cadwr-landuse/
 └── scripts/
     ├── 01-split.py                     # Harmonization pipeline -- see above
     ├── 02-process-tile.py              # Harmonization pipeline -- see above
-    ├── 03-combine-finalize.py          # Harmonization pipeline -- see above
+    ├── 03a-combine-parcels.py            # Harmonization pipeline -- see above
+    ├── 03b-finalize-crops.py              # Harmonization pipeline -- see above
     ├── ...
     ├── scc-process-tiles.sh            # qsub script for running 02-process-tile.py as an array job
     └── ...                             # Additional processing scripts
@@ -129,9 +136,9 @@ cadwr-landuse/
 
 ## Data Products
 
-### Primary Output: `crops_all_years.csv`
+### Primary Output: `crops_all_years.parq`
 
-The harmonized dataset combines all years into a single CSV with consistent column structure.
+The harmonized dataset combines all years into a single Parquet file with consistent column structure.
 
 ### Column Reference
 
@@ -317,22 +324,29 @@ write_csv(woody_crops, "woody_crops_subset.csv")
 
 ## Processing Pipeline
 
-The harmonization workflow consists of three main steps:
+The harmonization workflow consists of four main steps (see [Core harmonization workflow](#core-harmonization-workflow) for details):
 
-1. **Intake** ([`CARB_LandIQ_intake_script.R`](scripts/CARB_LandIQ_intake_script.R))
-  - Load annual shapefiles from CADWR
-  - Standardize CRS to EPSG:3857
-  - Extract field centroids
-  - Select and rename columns consistently
+1. **Split** ([`01-split.py`](scripts/01-split.py))
+   - Load annual shapefiles from CADWR
+   - Harmonize CRS across years
+   - Split California into 625 tiles (25×25 grid)
+   - Output: geoparquet files per tile per year
 
-2. **Harmonize** ([`CARB_LandIQ_harmonizing_script.R`](scripts/CARB_LandIQ_harmonizing_script.R))
-  - Align columns across years (handle missing columns in earlier years)
-  - Pivot from wide to long format (one row per field × year × season)
-  - Fill missing values (e.g. back-fill YRPLANTED using group-by operations)
+2. **Process Tiles** ([`02-process-tile.py`](scripts/02-process-tile.py))
+   - Perform iterative polygon overlay for each tile
+   - Apply spatial smoothing (precision snapping, optional morphological closing)
+   - Output: combined polygons with UniqueID mappings per year
 
-3. **Export**
-  - Write to CSV for efficient querying without spatial overhead
-  - Preserve geometry in separate shapefiles for spatial operations
+3. **Combine Parcels** ([`03a-combine-parcels.py`](scripts/03a-combine-parcels.py))
+   - Concatenate all tiles
+   - Dissolve polygons with identical attributes
+   - Assign unique parcel IDs
+   - Output: GeoPackage with parcel geometries
+
+4. **Finalize Crops** ([`03b-finalize-crops.py`](scripts/03b-finalize-crops.py))
+   - Merge parcel IDs with LandIQ attributes for each year
+   - Pivot to long format (one row per parcel × year × season)
+   - Output: Parquet file with complete attribute table
 
 ## Known Data Issues
 
