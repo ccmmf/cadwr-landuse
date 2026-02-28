@@ -11,60 +11,46 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser(description="Combine processed tiles into parcels")
-parser.add_argument(
-    "--outdir-root",
-    type=Path,
-    default=Path("_results/v4.1"),
-    help="Root directory for all outputs",
-)
-
+parser.add_argument("--outdir-root", type=Path, default=Path("_results/v4.1"))
 args = parser.parse_args()
 
 tile_dir = args.outdir_root / "02-tiles-combined"
 tile_files = sorted(tile_dir.glob("*.parq"))
-
 outdir = args.outdir_root / "03-final"
 outdir.mkdir(exist_ok=True, parents=True)
 
+SQ_METERS_PER_ACRE = 4046.8564224
+
 logger.info("STEP 1: Create merged parcels file")
 
-# Read all the files and combine into a single table
 logger.info("Reading and concatenating processed tiles")
 combined_raw = pd.concat(
     [gpd.read_parquet(fname) for fname in tqdm(tile_files)], ignore_index=True
 )
 
-# Merge polygons that were split only because of tiling
 logger.info("Dissolving polygons with identical attributes")
 ucols = [col for col in combined_raw.columns if col.startswith("UniqueID_")]
-combined_raw["is_duplicate"] = combined_raw.duplicated(subset=ucols, keep=False)
-merged = combined_raw.loc[combined_raw["is_duplicate"]].dissolve(
-    by=ucols, as_index=False
-)
-already_unique = combined_raw.loc[~combined_raw["is_duplicate"]]
-combined = (
-    pd.concat([already_unique, merged], ignore_index=True)
-    .sort_values(by=ucols)
-    .drop(columns=["is_duplicate"])
-)
+combined = combined_raw.dissolve(by=ucols, as_index=False, aggfunc="first")
+del combined_raw
 
 logger.info("Defining unique parcel ID")
+combined = combined.reset_index(drop=True)
 combined.insert(0, "parcel_id", range(len(combined)))
 combined["UniqueID_2016"] = combined["UniqueID_2016"].astype(str)
-
-SQ_METERS_PER_ACRE = 4046.8564224
 combined["ACRES"] = combined.geometry.area / SQ_METERS_PER_ACRE
 
 logger.info("Writing out complete parcels file")
-combined.to_file(outdir / "parcels-all.gpkg", driver="GPKG")
+combined.to_file(outdir / "parcels.gpkg", driver="GPKG")
 
-# Merge small polygons (< 1 acre) into nearest large polygon (>= 1 acre)
-# within 200m radius
 logger.info("Splitting into small (<1 acre) and large (>=1 acre) polygons")
-small = combined[combined.geometry.area < SQ_METERS_PER_ACRE].copy()
-large = combined[combined.geometry.area >= SQ_METERS_PER_ACRE].copy()
+small = combined[combined["ACRES"] < 1].copy()
+large = combined[combined["ACRES"] >= 1].copy()
+logger.info(f"Small polygons: {len(small):,}, Large: {len(large):,}")
 
-logger.info("Merging small polygons into closest large polygons")
+logger.info("Merging every small polygon into the closest large polygon")
+
+# This returns a data frame with a column called `index_large` that indicates 
+# what polygons were matched (`na` if not matched).
 small_merged = small.sjoin_nearest(
     large,
     how="left",
@@ -75,23 +61,51 @@ small_merged = small.sjoin_nearest(
 
 small_no_match = small_merged[small_merged["index_large"].isna()].copy()
 small_matched = small_merged[small_merged["index_large"].notna()].copy()
+logger.info(f"Small matched: {len(small_matched):,}, unmatched: {len(small_no_match):,}")
 
-small_matched["_merge_key"] = small_matched["index_large"]
-logger.info("Dissolving columns post merge")
-merged = small_matched.dissolve(by="_merge_key", as_index=False)
-
-large_cols = [c for c in merged.columns if not c.endswith("_small")]
-merged = merged[large_cols]
-
-small_no_match_cols = [c for c in small_no_match.columns if not c.endswith("_large")]
-small_no_match = small_no_match[small_no_match_cols]
-
-combined = pd.concat([large, merged, small_no_match], ignore_index=True).sort_values(
-    by="parcel_id"
+# For every parcel ID, combine all the small geometries that matched with that 
+# parcel ID.
+small_geom_by_target = (
+    small_matched.groupby("index_large")["geometry"]
+    .agg(lambda geoms: geoms.union_all())
 )
+# Above produces a simple pd.Series. Need to make it a GeoSeries again with a 
+# CRS.
+small_geom_by_target = gpd.GeoSeries(small_geom_by_target, crs=small.crs)
+
+# Now, take the unioned small geometries from the previous step and combine 
+# them with the original large geometry.
+large.loc[small_geom_by_target.index, "geometry"] = (
+    large.loc[small_geom_by_target.index, "geometry"]
+    .union(small_geom_by_target)
+)
+
+# Keep unmatched small polygons, restoring original column names
+small_cols = [c for c in small_no_match.columns if not c.endswith("_large")]
+small_no_match = small_no_match[small_cols].rename(
+    columns={c: c[: -len("_small")] for c in small_cols if c.endswith("_small")}
+)
+
+# Verify columns align before concat
+assert set(large.columns) == set(small_no_match.columns), (
+    f"Column mismatch before concat:\n"
+    f"  large only: {set(large.columns) - set(small_no_match.columns)}\n"
+    f"  small_no_match only: {set(small_no_match.columns) - set(large.columns)}"
+)
+
+# Combine the small unmatched and large (merged) polygons into one data frame 
+combined = (
+    pd.concat([large, small_no_match])
+    .sort_values(by="parcel_id")
+    .reset_index(drop=True)
+)
+
+# Recalculate area, since we now should have (slightly) larger polygons post combination
 combined["ACRES"] = combined.geometry.area / SQ_METERS_PER_ACRE
 
-logger.info("Writing out only large parcels")
-combined.to_file(outdir / "parcels.gpkg", driver="GPKG")
+assert combined["parcel_id"].is_unique, "Duplicate parcel_ids after merge!"
+
+logger.info("Writing out consolidated parcels file")
+combined.to_file(outdir / "parcels-consolidated.gpkg", driver="GPKG")
 
 logger.info("Done with STEP 1!")
