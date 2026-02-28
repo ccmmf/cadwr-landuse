@@ -6,5 +6,8 @@
 
 OUTDIR_ROOT=${1:-"_results/v4.1"}
 
-pixi run python scripts/03-combine-finalize.py \
+pixi run python scripts/03a-combine-parcels.py \
+  --outdir-root "$OUTDIR_ROOT"
+
+pixi run python scripts/03b-finalize-crops.py \
   --outdir-root "$OUTDIR_ROOT"
