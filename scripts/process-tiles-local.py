@@ -93,7 +93,7 @@ def main():
     parser.add_argument(
         "--crs",
         type=str,
-        default=None,
+        default="EPSG:3310",
         help="CRS to reproject data to before processing",
     )
     parser.add_argument(
@@ -136,7 +136,7 @@ def main():
         for tile in tiles
     ]
 
-    dask.compute(*delayed_results, scheduler="synchronous")
+    dask.compute(*delayed_results, scheduler="processes", num_workers=args.ntasks)
 
     end_time = time.time()
     duration = end_time - start_time
