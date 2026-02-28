@@ -18,10 +18,10 @@ def _preprocess_dat(dat: gpd.GeoDataFrame, precision, morph_close):
         return dat
     if morph_close is not None:
         dat["geometry"] = dat.buffer(morph_close).buffer(-morph_close)
+    dat["geometry"] = dat.make_valid()
     if precision is not None:
         dat["geometry"] = dat.set_precision(precision)
     dat["geometry"] = dat.buffer(0)
-    dat["geometry"] = dat.make_valid()
     return dat
 
 
@@ -65,6 +65,13 @@ def process_tile(
 
     # Apply overlay iteratively to the data frames.
     def reduce_overlay(dfs):
+        dfs = [df for df in dfs if len(df) > 0]
+        if not dfs:
+            raise ValueError(
+                f"Tile {tile_dir.name}: No valid geometries after preprocessing"
+            )
+        if len(dfs) == 1:
+            return dfs[0]
         result = dfs[0]
         for df in dfs[1:]:
             result = gpd.overlay(result, df, how="union")
