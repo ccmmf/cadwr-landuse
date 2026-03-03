@@ -40,6 +40,7 @@ combined["UniqueID_2016"] = combined["UniqueID_2016"].fillna(-1).astype(int).ast
 combined["ACRES"] = combined.geometry.area / SQ_METERS_PER_ACRE
 
 logger.info("Writing out complete parcels file")
+combined = combined[~combined.geometry.is_empty]
 combined.to_file(outdir / "parcels.gpkg", driver="GPKG")
 
 logger.info("Splitting into small (<1 acre) and large (>=1 acre) polygons")
