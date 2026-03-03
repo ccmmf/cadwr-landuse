@@ -199,6 +199,9 @@ for year, fname in tqdm(files.items()):
     gc.collect()
 
     merged = clean_numeric_cols(merged)
+    sentinel_re = r"^\*+$"
+    for col in merged.select_dtypes(include="object").columns:
+        merged[col] = merged[col].replace(sentinel_re, None, regex=True)
     merged = merged.rename(columns=irr_type_rename)
     merged["_row_id"] = range(len(merged))
     id_cols = ["parcel_id", "year", "_row_id"]
