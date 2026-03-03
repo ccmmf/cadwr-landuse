@@ -36,7 +36,7 @@ del combined_raw
 logger.info("Defining unique parcel ID")
 combined = combined.reset_index(drop=True)
 combined.insert(0, "parcel_id", range(len(combined)))
-combined["UniqueID_2016"] = combined["UniqueID_2016"].astype(str)
+combined["UniqueID_2016"] = combined["UniqueID_2016"].fillna(-1).astype(int).astype(str).replace("-1", None)
 combined["ACRES"] = combined.geometry.area / SQ_METERS_PER_ACRE
 
 logger.info("Writing out complete parcels file")
