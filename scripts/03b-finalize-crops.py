@@ -110,6 +110,8 @@ stubnames = ["CLASS", "SUBCLASS", "SPECOND", "IRR_TYP_PA", "IRR_TYP_PB", "PCNT",
 
 def read_data(fname: Path, year: int):
     read_cols = keep_cols.loc[keep_cols[str(year)] == 1]["name"].tolist()
+    # Also drop the ACRES column -- we calculate it later
+    read_cols = [col for col in read_cols if col != "ACRES"]
     dat = gpd.read_file(fname, use_arrow=True, ignore_geometry=True, columns=read_cols)
     if year == 2016:
         dat = dat.reset_index(names="UniqueID")
