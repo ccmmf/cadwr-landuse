@@ -1,7 +1,10 @@
 # CADWR Land Use Data: Harmonized LandIQ Crop Mapping for California
 
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](LICENSE)
+[![Code License](https://img.shields.io/badge/Code_License-BSD_3--Clause-blue.svg)](LICENSE)
+![Public Domain Data](https://img.shields.io/badge/Data_License-CC0_1.0-lightgrey.svg)](https://creativecommons.org/public-domain/cc0/)
 [![Data Version](https://img.shields.io/badge/Data_Version-1.0.0-green.svg)](#versioning)
+
 
 This repository contains scripts, documentation, and lookup tables for processing California Department of Water Resources (CADWR) Statewide Crop Mapping data (commonly known as "LandIQ" data) for use in the CCMMF carbon modeling workflow.
 
@@ -21,14 +24,14 @@ The LandIQ dataset provides annual field-level crop identification for all agric
 
 Original data from CADWR Statewide Crop Mapping Program:
 
-| Attribute | Value |
-|-----------|-------|
-| **Source** | California Department of Water Resources, Land Use Program |
-| **Website** | https://data.cnra.ca.gov/dataset/statewide-crop-mapping |
-| **Coverage** | Statewide California agricultural lands |
-| **Temporal Extent** | 2014, 2016, 2018–2023 (harmonized: 2016–2023) |
+| Attribute            | Value                                                                         |
+| -------------------- | ----------------------------------------------------------------------------- |
+| **Source**           | California Department of Water Resources, Land Use Program                    |
+| **Website**          | https://data.cnra.ca.gov/dataset/statewide-crop-mapping                       |
+| **Coverage**         | Statewide California agricultural lands                                       |
+| **Temporal Extent**  | 2014, 2016, 2018–2023 (harmonized: 2016–2023)                                 |
 | **Update Frequency** | Annual (provisional releases typically in fall, finalized the following year) |
-| **Native CRS** | WGS 84 / Pseudo-Mercator for 2014, 2016, and 2018 and NAD83 (EPSG 4269) from 2019 onwards; harmonized to EPSG:3310 (California Albers) for centroids |
+| **Native CRS**       | WGS 84 / Pseudo-Mercator for 2014, 2016, and 2018 and NAD83 (EPSG 4269) from 2019 onwards; harmonized to EPSG:3310 (California Albers) for centroids |
 
 ## Core harmonization workflow
 
@@ -118,7 +121,9 @@ At the end of this pipeline, we have two files:
 cadwr-landuse/
 ├── LICENSE                         
 ├── README.md                       
-├── metadata.md                     # Detailed column documentation with examples
+├── docs/
+│   ├── harmonization_v0.1.md       # Harmonization workflow documentation (v0.1)
+│   └── metadata.qmd                # Generated metadata tables (from `data/`)
 ├── data/
 │   ├── CARB_PFTs_table.csv         # Crop -> PFT mapping for ecosystem modeling
 │   ├── CARB_Metadata_ref.csv       # Column presence by year (provenance tracking)
@@ -174,19 +179,20 @@ See [metadata.md](metadata.md) for complete column descriptions with example val
 
 ### Cropping Intensity Codes (MULTIUSE)
 
-| Code | Meaning | Description |
-|------|---------|-------------|
-| S | Single | One crop per water year |
-| D | Double | Two crops per water year |
-| T | Triple | Three crops per water year |
-| Q | Quadruple | Four crops per water year |
-| I | Intercropped | Multiple crops grown simultaneously |
-| M | Mixed | Combination of cropping patterns |
+| Code | Meaning      | Description                         |
+| ---- | ------------ | ----------------------------------- |
+| S    | Single       | One crop per water year             |
+| D    | Double       | Two crops per water year            |
+| T    | Triple       | Three crops per water year          |
+| Q    | Quadruple    | Four crops per water year           |
+| I    | Intercropped | Multiple crops grown simultaneously |
+| M    | Mixed        | Combination of cropping patterns    |
 
 ### Crop Classification System
 
 LandIQ uses a hierarchical CLASS/SUBCLASS system. Major crop classes:
 
+ alexey-harmonize-tiled
 | CLASS | Category | Examples | Typical SUBCLASS Range |
 |-------|----------|----------|------------------------|
 | C | Citrus & Subtropical | Oranges, lemons, avocados, olives | 1–11 |
@@ -204,18 +210,19 @@ LandIQ uses a hierarchical CLASS/SUBCLASS system. Major crop classes:
 | U | Urban | Urban - generic nomenclature | - |
 | UL | Lawn | Irrigated lawns, golf courses, cemeteries | 1-5 |
 
+
 Complete classification codes: [data/landiq_crop_mapping_codes.tsv](data/landiq_crop_mapping_codes.tsv)
 
 ### Plant Functional Type (PFT) Mapping
 
 For ecosystem modeling, crops are mapped to PFTs in [data/CARB_PFTs_table.csv](data/CARB_PFTs_table.csv):
 
-| PFT Group | Description | Example Crops | N Crop Types |
-|-----------|-------------|---------------|--------------|
-| `woody` | Perennial woody crops | Almonds, walnuts, citrus, grapes | 45 |
-| `row` | Annual row crops | Tomatoes, corn, wheat, vegetables | 89 |
-| `hay` | Hay and forage | Alfalfa mixtures, mixed hay | 12 |
-| `rice` | Flooded rice systems | Paddy rice, wild rice | 2 |
+| PFT Group | Description           | Example Crops                     | N Crop Types |
+| --------- | --------------------- | --------------------------------- | ------------ |
+| `woody`   | Perennial woody crops | Almonds, walnuts, citrus, grapes  | 45           |
+| `row`     | Annual row crops      | Tomatoes, corn, wheat, vegetables | 89           |
+| `hay`     | Hay and forage        | Alfalfa mixtures, mixed hay       | 12           |
+| `rice`    | Flooded rice systems  | Paddy rice, wild rice             | 2            |
 
 ## Data Access
 
@@ -256,16 +263,22 @@ tar -xzvf ccmmf_landiq_data.tar.gz
 
 ### For geo.bu.edu Users
 
+Define the CCMMF directory once for convenience:
+
+```bash
+export GEO_CCMMF_DIR=/projectnb/dietzelab/ccmmf
+```
+
 Data is pre-staged at:
 ```bash
 # Harmonized CSV (primary product)
-/projectnb/dietzelab/ccmmf/data_raw/cadwr_land_use/crops_all_years.csv
+$GEO_CCMMF_DIR/data_raw/cadwr_land_use/crops_all_years.csv
 
 # Raw shapefiles by year
-/projectnb/dietzelab/ccmmf/data_raw/cadwr_land_use/landiq_shapefiles/
+$GEO_CCMMF_DIR/data_raw/cadwr_land_use/landiq_shapefiles/
 
 # Spatial join across all years
-/projectnb/dietzelab/ccmmf/data_raw/cadwr_land_use/2015-2023_crops_same_uid/
+$GEO_CCMMF_DIR/data_raw/cadwr_land_use/2015-2023_crops_same_uid/
 ```
 
 ## Usage Examples
