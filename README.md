@@ -146,10 +146,13 @@ The harmonized dataset combines all years into a single Parquet file with consis
 |--------|------|-------------|-------|
 | `UniqueID` | integer | Persistent field identifier across years | 2016 extrapolated from 2018 spatial join |
 | `year` | integer | Data collection year (2016, 2018–2023) | No 2017 data available |
+| `parcel_id` | integer | Unique parcel identifier | 0 indexed |
+| `ACRES` | numeric | Parcel area in acres | Computed from geometry in EPSG:3310 |
 | `centx` | numeric | Field centroid X coordinate | EPSG:3857 (Web Mercator) |
-| `centy` | numeric | Field centroid Y coordinate | EPSG:3857 (Web Mercator) |
+| `centx` | numeric | Field centroid X coordinate | EPSG:3310 (California Albers) |
+| `centy` | numeric | Field centroid Y coordinate | EPSG:3310 (California Albers) |
 | `COUNTY` | character | California county name | Based on centroid location |
-| `HYDRORGN` | character | DWR hydrologic region | 10 regions statewide |
+| `HYDRO_RGN` | character | DWR hydrologic region | 10 regions statewide |
 | `REGION` | character | DWR regional office code | NRO, NCRO, SCRO, SRO |
 | `CLASS` | character | Primary crop class code | Single letter (see table below) |
 | `SUBCLASS` | integer | Crop subclass for specific identification | Numeric, crop-specific |
@@ -157,13 +160,15 @@ The harmonized dataset combines all years into a single Parquet file with consis
 | `MULTIUSE` | character | Cropping intensity code | S/D/T/Q/I/M (see below) |
 | `PCNT` | integer | Percentage of field area | "00" represents 100% |
 | `ADOY` | integer | Adjusted day-of-year for peak NDVI | Negative = prior year (e.g., -92 = Oct 1) |
-| `SENCROP` | character | Senescing crop at start of water year | Crop code from previous season |
-| `ADOYSEN` | integer | ADOY for senescing crop | Available 2021+ |
-| `ADOYEMRG` | integer | ADOY for emerging crop | Available 2021+ |
-| `YRPLANTED` | integer | Year perennial crops were established | Available 2020+; 0 = unknown |
+| `SEN_CROP` | character | Senescing crop at start of water year | Crop code from previous season |
+| `ADOY_SEN` | integer | ADOY for senescing crop | Available 2021+ |
+| `ADOY_EMRG` | integer | ADOY for emerging crop | Available 2021+ |
+| `EMRG_CROP` | character | Emerging crop at end of water year | Crop code; available 2019+ |
+| `YR_PLANTED` | integer | Year perennial crops were established | Available 2020+; 0 = unknown |
 | `SPECOND` | character | Special condition designation | Y = young perennial, etc. |
 | `IRRTYPPA` | character | Irrigation status | Blank = presumed irrigated, N = non-irrigated |
-| `IRRTYPPB` | character | Irrigation system type | Flood, drip, sprinkler, etc. |
+| `IRR_TYPPA` | character | Irrigation status | Blank = presumed irrigated, N = non-irrigated |
+| `IRR_TYPPB` | character | Irrigation system type | Flood, drip, sprinkler, etc. |
 
 See [metadata.md](metadata.md) for complete column descriptions with example values.
 
@@ -189,12 +194,15 @@ LandIQ uses a hierarchical CLASS/SUBCLASS system. Major crop classes:
 | F | Field Crops | Cotton, corn, beans, safflower | 1–18 |
 | G | Grain & Hay | Wheat, barley, oats | 1–7 |
 | P | Pasture | Alfalfa, mixed pasture, turf | 1–9 |
+| NR | Riparian Vegetation | Marsh, meadow, streamside vegetation | 1-5 |
 | R | Rice | Paddy rice, wild rice | 1–2 |
 | T | Truck, Nursery & Berry | Tomatoes, lettuce, strawberries | 1–34 |
 | V | Vineyards | Table, wine, and raisin grapes | 1–4 |
 | I | Idle | Fallow land (1–4+ years) | 1–4 |
 | YP | Young Perennial | Recently planted orchards/vineyards | — |
 | X | Unclassified | Unable to determine | — |
+| U | Urban | Urban - generic nomenclature | - |
+| UL | Lawn | Irrigated lawns, golf courses, cemeteries | 1-5 |
 
 Complete classification codes: [data/landiq_crop_mapping_codes.tsv](data/landiq_crop_mapping_codes.tsv)
 
@@ -355,7 +363,7 @@ The harmonization workflow consists of four main steps (see [Core harmonization 
 | Missing UniqueID | 2016 | Extrapolated from 2018 spatial join | Fields with NA UniqueID were not in 2018 data |
 | Provisional data | 2022–2023 | May be updated in future CADWR releases | Check for updates annually |
 | No Season 4 | 2016 | Fourth season added starting 2018 | Use seasons 1–3 only for 2016 |
-| Missing YRPLANTED | 2016–2019 | Only available from 2020 onward | Back-filled where possible; 0 = unknown |
+| Missing YR_PLANTED | 2016–2019 | Only available from 2020 onward | Back-filled where possible; 0 = unknown |
 | Centroid shifts | All years | Field boundaries occasionally change | Same UniqueID may have slightly different coordinates |
 | No 2017 data | 2017 | CADWR did not release 2017 survey | Gap year in time series |
 
