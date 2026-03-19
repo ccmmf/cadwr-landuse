@@ -28,7 +28,7 @@ Original data from CADWR Statewide Crop Mapping Program:
 | **Coverage** | Statewide California agricultural lands |
 | **Temporal Extent** | 2014, 2016, 2018–2023 (harmonized: 2016–2023) |
 | **Update Frequency** | Annual (provisional releases typically in fall, finalized the following year) |
-| **Native CRS** | WGS 84 / Pseudo-Mercator for 2014, 2016, and 2018 and NAD83 (EPSG 4269) from 2019 onwards; harmonized to EPSG:3857 (Web Mercator) for centroids |
+| **Native CRS** | WGS 84 / Pseudo-Mercator for 2014, 2016, and 2018 and NAD83 (EPSG 4269) from 2019 onwards; harmonized to EPSG:3310 (California Albers) for centroids |
 
 ## Core harmonization workflow
 
