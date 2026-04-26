@@ -1,0 +1,166 @@
+class_name,class,subclass,subclass_name,pft_group,notes
+grain and hay crops,G,1,barley,row,
+grain and hay crops,G,2,wheat,row,
+grain and hay crops,G,3,oats,row,
+grain and hay crops,G,6,miscellaneous grain and hay,hay,
+grain and hay crops,G,7,mixed grain and hay,hay,
+rice,R,1,rice,rice,
+rice,R,2,wild rice,rice,
+field crops,F,1,cotton,row,
+field crops,F,2,safflower,row,
+field crops,F,3,flax,row,
+field crops,F,4,hops,row,
+field crops,F,5,sugar beets,row,
+field crops,F,6,corn,row,field and sweet
+field crops,F,7,grain sorghum,row,
+field crops,F,8,sudan,row,
+field crops,F,9,castor beans,row,
+field crops,F,10,beans,row,dry
+field crops,F,11,miscellaneous field,row,
+field crops,F,12,sunflowers,row,
+field crops,F,13,hybrid sorghum sudan,row,
+field crops,F,14,millet,row,
+field crops,F,15,sugar cane,row,
+field crops,F,16,corn sorghum sudan,row,grouped for remote sensing only
+pasture,P,1,alfalfa and alfalfa mixtures,row,
+pasture,P,2,clover,row,
+pasture,P,3,mixed pasture,row,
+pasture,P,4,native pasture,row,
+pasture,P,5,induced high water table native pasture,row,
+pasture,P,6,miscellaneous grasses,row,
+pasture,P,7,turf farms,row,
+pasture,P,8,bermuda grass,row,
+pasture,P,9,rye grass,row,
+pasture,P,10,klein grass,row,
+truck nursery and berry crops,T,1,artichokes,row,
+truck nursery and berry crops,T,2,asparagus,row,
+truck nursery and berry crops,T,3,beans,row,green
+truck nursery and berry crops,T,4,cole crops,row,mixture of 22-25
+truck nursery and berry crops,T,6,carrots,row,
+truck nursery and berry crops,T,7,celery,row,
+truck nursery and berry crops,T,8,lettuce,row,all types
+truck nursery and berry crops,T,9,melons squash and cucumber,row,all types
+truck nursery and berry crops,T,10,onions and garlic,row,
+truck nursery and berry crops,T,11,peas,row,
+truck nursery and berry crops,T,12,potatoes,row,
+truck nursery and berry crops,T,13,sweet potatoes,row,
+truck nursery and berry crops,T,14,spinach,row,
+truck nursery and berry crops,T,15,tomatoes,row,processing
+truck nursery and berry crops,T,16,flowers nursery and christmas tree farms,row,
+truck nursery and berry crops,T,17,mixed,row,four or more
+truck nursery and berry crops,T,18,miscellaneous truck,row,
+truck nursery and berry crops,T,19,bush berries,woody,
+truck nursery and berry crops,T,20,strawberries,row,
+truck nursery and berry crops,T,21,peppers,row,chili bell etc
+truck nursery and berry crops,T,22,broccoli,row,
+truck nursery and berry crops,T,23,cabbage,row,
+truck nursery and berry crops,T,24,cauliflower,row,
+truck nursery and berry crops,T,25,brussels sprouts,row,
+truck nursery and berry crops,T,26,tomatoes,row,market
+truck nursery and berry crops,T,27,greenhouse,row,
+truck nursery and berry crops,T,28,blueberries,woody,
+truck nursery and berry crops,T,29,asian leafy vegetables,row,
+truck nursery and berry crops,T,30,lettuce or leafy greens,row,grouped for remote sensing only
+truck nursery and berry crops,T,31,potato or sweet potato,row,grouped for remote sensing only
+deciduous fruits and nuts,D,1,apples,woody,
+deciduous fruits and nuts,D,2,apricots,woody,
+deciduous fruits and nuts,D,3,cherries,woody,
+deciduous fruits and nuts,D,5,peaches and nectarines,woody,
+deciduous fruits and nuts,D,6,pears,woody,
+deciduous fruits and nuts,D,7,plums,woody,
+deciduous fruits and nuts,D,8,prunes,woody,
+deciduous fruits and nuts,D,9,figs,woody,
+deciduous fruits and nuts,D,10,miscellaneous deciduous,woody,
+deciduous fruits and nuts,D,11,mixed deciduous,woody,
+deciduous fruits and nuts,D,12,almonds,woody,
+deciduous fruits and nuts,D,13,walnuts,woody,
+deciduous fruits and nuts,D,14,pistachios,woody,
+deciduous fruits and nuts,D,15,pomegranates,woody,
+deciduous fruits and nuts,D,16,plums prunes or apricots,woody,grouped for remote sensing only
+citrus and subtropical,C,1,grapefruit,woody,
+citrus and subtropical,C,2,lemons,woody,
+citrus and subtropical,C,3,oranges,woody,
+citrus and subtropical,C,4,dates,woody,
+citrus and subtropical,C,5,avocados,woody,
+citrus and subtropical,C,6,olives,woody,
+citrus and subtropical,C,7,miscellaneous subtropical fruits,woody,
+citrus and subtropical,C,8,kiwis,woody,
+citrus and subtropical,C,9,jojoba,woody,
+citrus and subtropical,C,10,eucalyptus,woody,
+citrus and subtropical,C,11,mixed subtropical fruits,woody,
+vineyards,V,1,table grapes,woody,
+vineyards,V,2,wine grapes,woody,
+vineyards,V,3,raisin grapes,woody,
+young perennial,YP,,,woody,no subclass
+idle,I,1,cropped in past 3 years,,not cropped in current or previous crop season
+idle,I,2,new prepped for production,,new land being prepared for crop production
+idle,I,4,long term,,land consistently idle for 4 or more years
+unclassified,X,,not cropped or classified,,not cropped or classified and no subclass
+semi-agricultural and incidental to agriculture,S,1,farmsteads,,includes a farm residence
+semi-agricultural and incidental to agriculture,S,2,livestock feed lot operations,,
+semi-agricultural and incidental to agriculture,S,3,dairies,,
+semi-agricultural and incidental to agriculture,S,4,poultry farms,,
+semi-agricultural and incidental to agriculture,S,5,farmsteads,,without a farm residence
+semi-agricultural and incidental to agriculture,S,6,miscellaneous semi-agricultural,,small roads ditches non-planted areas of cropped fields
+urban,U,,,,no subclass
+urban residential,UR,1,single family dwelling,,lot sizes greater than 1 acre and up to 5 acres ranchettes
+urban residential,UR,2,single family dwelling ,,density 1 unit/acre up to 8+ units per acre
+urban residential,UR,3,multiple family ,,apartments condoes townhouses barracks bungalows duplexes etc
+urban residential,UR,4,trailer courts,,
+commercial,UC,1,offices and retail,,offices retailers etc
+commercial,UC,2,hotels,,
+commercial,UC,3,motels,,
+commercial,UC,4,recreation vehile parking and camp sites,,
+commercial,UC,5,institutions,,hospitals prisons reformatories asylums etc with constant residence population
+commercial,UC,6,schools,,yards mapped separately if large enough
+commercial,UC,7,municipal,,municipal auditoriums theaters churches race tracks football stadiums baseball parks rodeo arenas amusement parks etc
+commercial,UC,8,miscellaneous highwater use,,
+industrial,UI,1,manufacturing assembling general processing,,
+industrial,UI,2,extractive industries,,oil fields rock quarries gravel pits rock and gravel processing plants etc
+industrial,UI,3,storage and distribution,,warehouses substations railroad marshalling yards tank farms
+industrial,UI,6,saw mills,,
+industrial,UI,7,oil refineries,,
+industrial,UI,8,paper mills,,
+industrial,UI,9,meat packing plants,,
+industrial,UI,10,steel and aluminum mills,,
+industrial,UI,11,fruit and vegetable canneries,,and general food processing 
+industrial,UI,12,miscellaneous highwater use,,
+industrial,UI,13,sewage treatment plant ,,including ponds
+industrial,UI,14,waste accumulation sites,,public dumps sweage sludge sites landfill hazardous waste etc
+industrial,UI,15,wind solar collector farms,,wind and solar etc
+lawn,UL,1,lawn irrigated,,
+lawn,UL,2,golf course irrigated,,
+lawn,UL,3,ornamental landscape irrigated,,excluding lawns
+lawn,UL,4,cemeteries irrigated,,
+lawn,UL,5,cemeteries not irrigated,,
+vacant,UV,1,unpaved areas,,vacant lots graveled surfaces play yards developable open lands in urban areas
+vacant,UV,3,railroad right of way,,
+vacant,UV,4,paved areas,,parking lots paved roads oiled surfaces flood control channels tennis courts auto sales etc
+vacant,UV,6,airport runways,,
+vacant,UV,7,not developable,,land in urban areas not open for development
+native class,NC,1,grassland,,
+native class,NC,2,light brush,,
+native class,NC,3,medium brush,,
+native class,NC,4,heavy brush,,
+native class,NC,5,brush and timber,,
+native class,NC,6,forest,,
+native class,NC,7,oak woodland,,
+riparian vegetation,NR,1,marsh lands tules sedges,,
+riparian vegetation,NR,2,natural highwater table meadow,,
+riparian vegetation,NR,3,trees shrubs large water vegetation,,larger stream side or watercourse vegetation
+riparian vegetation,NR,4,seasonal duck marsh,,dry or only partially wet during summer
+riparian vegetation,NR,5,permanent duck marsh,,flooded during summer
+water surface,NW,1,river or stream,,natural fresh water channels
+water surface,NW,2,water channels,,all sizes ditches and canals irrigation water district canals
+water surface,NW,3,water channels,,all sizes ditches and canals for removing on farm drainage water surface runoff subsurface drainage
+water surface,NW,4,freshwater lake reservoir or pond,,all sizes includes ponds for stock recreation groundwater recharge managed wetlands and on farm storage etc
+water surface,NW,5,brackish and saline water,,estuaries inland water bodies ocean etc
+water surface,NW,6,wastewater pond,,dairy sewage cannery winery etc
+water surface,NW,7,paved water conveyance,,paved water channels within urban areas mainly for flood control
+barren and wasteland,NB,1,dry steam channels,,
+barren and wasteland,NB,2,mine tailings,,
+barren and wasteland,NB,3,barren land,,
+barren and wasteland,NB,4,salt flats,,
+barren and wasteland,NB,5,sand dunes,,
+entry denied,E,,,,no subclass
+outside study area,Z,,,,no subclass
