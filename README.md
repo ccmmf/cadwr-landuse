@@ -319,13 +319,37 @@ crops_with_pft |>
 
 ### Looking up PFTs by crop name
 
-If you have crop names rather than LandIQ codes, filter on `subclass_name` directly. Names are not always unique (`beans`, `tomatoes`, `farmsteads`, and `miscellaneous highwater use` each appear under more than one class/subclass), so filter results may include multiple rows.
+If you have crop names rather than LandIQ codes, the `lookup_pft()` helper at [R/lookup_pft.R](R/lookup_pft.R) does the matching for you. Source it from the repo root:
 
 ```r
-pft_map |>
-  filter(tolower(subclass_name) %in% c("rice", "cotton", "corn")) |>
-  select(class, subclass, subclass_name, pft_group)
+source("R/lookup_pft.R")
+
+# name based, case insensitive, leading/trailing whitespace tolerated
+lookup_pft(c("rice", "cotton", "almonds"))
+
+# data frame input for parquet pipelines that already have class/subclass columns
+lookup_pft(data.frame(class = c("D", "G", "R"), subclass = c("12", "2", "1")))
 ```
+
+A few `subclass_name` values appear under more than one class/subclass pair (`beans`, `tomatoes`, `farmsteads`, `miscellaneous highwater use`, `single family dwelling`, `water channels`). Name lookups for those return all matching rows with a warning, so the caller can disambiguate via `class`.
+
+If you need PEcAn PFT registry names (`temperate.deciduous`, `grass`, `soil`) for SIPNET or ED config writing, set `pecan = TRUE`:
+
+```r
+lookup_pft(c("rice", "almonds"), pecan = TRUE)
+```
+
+This adds a `pecan_pft` column derived as `woody -> temperate.deciduous`, `row`/`rice`/`hay` -> `grass`, non-crop -> `soil`. Off by default so the canonical CSV stays project neutral. Workflows that need a more specific PFT scheme (e.g. `soil_rice`, `soil_nfixer` for rice and fixer simulations) should derive their own column locally.
+
+### Schema validation
+
+[tests/check_cadwr_pfts.R](tests/check_cadwr_pfts.R) verifies the structure of the table without pinning any value mappings. Run it from the repo root:
+
+```bash
+Rscript tests/check_cadwr_pfts.R
+```
+
+Checks: required columns are present, `(class, subclass)` is a unique key, `pft_group` values stay within `{row, woody, rice, hay, NA}`. Edits to individual mappings will pass; structural drift won't.
 
 ### Working with shapefiles
 
