@@ -125,7 +125,7 @@ cadwr-landuse/
 │   ├── harmonization_v0.1.md       # Harmonization workflow documentation (v0.1)
 │   └── metadata.qmd                # Generated metadata tables (from `data/`)
 ├── data/
-│   ├── CARB_PFTs_table.csv         # Crop -> PFT mapping for ecosystem modeling
+│   ├── cadwr_pfts.csv              # Crop -> PFT mapping for ecosystem modeling
 │   ├── CARB_Metadata_ref.csv       # Column presence by year (provenance tracking)
 │   ├── crops_all_years_metadata.csv # Data dictionary for harmonized CSV
 │   └── landiq_crop_mapping_codes.tsv # Complete LandIQ classification codes (206 entries)
@@ -215,14 +215,16 @@ Complete classification codes: [data/landiq_crop_mapping_codes.tsv](data/landiq_
 
 ### Plant Functional Type (PFT) Mapping
 
-For ecosystem modeling, crops are mapped to PFTs in [data/CARB_PFTs_table.csv](data/CARB_PFTs_table.csv):
+For ecosystem modeling, crops are mapped to PFTs in [data/cadwr_pfts.csv](data/cadwr_pfts.csv):
 
 | PFT Group | Description           | Example Crops                     | N Crop Types |
 | --------- | --------------------- | --------------------------------- | ------------ |
-| `woody`   | Perennial woody crops | Almonds, walnuts, citrus, grapes  | 45           |
-| `row`     | Annual row crops      | Tomatoes, corn, wheat, vegetables | 89           |
-| `hay`     | Hay and forage        | Alfalfa mixtures, mixed hay       | 12           |
+| `woody`   | Perennial woody crops | Almonds, walnuts, citrus, grapes  | 32           |
+| `row`     | Annual row crops      | Tomatoes, corn, wheat, vegetables | 57           |
+| `hay`     | Hay and forage        | Miscellaneous and mixed grain/hay | 2            |
 | `rice`    | Flooded rice systems  | Paddy rice, wild rice             | 2            |
+
+The remaining 72 rows have `pft_group` blank because they are non-cropped land use classes (idle, semi-agricultural, urban, native vegetation, water, etc.).
 
 ## Data Access
 
@@ -294,14 +296,14 @@ crops <- data.table::fread(
 )
 
 # Load PFT mapping
-pft_map <- read_csv("data/CARB_PFTs_table.csv")
+pft_map <- read_csv("data/cadwr_pfts.csv")
 
 # Join to get PFT for each field
 crops_with_pft <- crops |>
  filter(!is.na(CLASS)) |>
  left_join(
    pft_map,
-   by = c("CLASS" = "crop_type", "SUBCLASS" = "crop_code")
+   by = c("CLASS" = "class", "SUBCLASS" = "subclass")
  )
 
 # Summarize woody crops by county (2023, main growing season)
@@ -314,6 +316,40 @@ crops_with_pft |>
  ) |>
  arrange(desc(n_fields))
 ```
+
+### Looking up PFTs by crop name
+
+If you have crop names rather than LandIQ codes, the `lookup_pft()` helper at [R/lookup_pft.R](R/lookup_pft.R) does the matching for you. Source it from the repo root:
+
+```r
+source("R/lookup_pft.R")
+
+# name based, case insensitive, leading/trailing whitespace tolerated
+lookup_pft(c("rice", "cotton", "almonds"))
+
+# data frame input for parquet pipelines that already have class/subclass columns
+lookup_pft(data.frame(class = c("D", "G", "R"), subclass = c("12", "2", "1")))
+```
+
+A few `subclass_name` values appear under more than one class/subclass pair (`beans`, `tomatoes`, `farmsteads`, `miscellaneous highwater use`, `single family dwelling`, `water channels`). Name lookups for those return all matching rows with a warning, so the caller can disambiguate via `class`.
+
+If you need PEcAn PFT registry names (`temperate.deciduous`, `grass`, `soil`) for SIPNET or ED config writing, set `pecan = TRUE`:
+
+```r
+lookup_pft(c("rice", "almonds"), pecan = TRUE)
+```
+
+This adds a `pecan_pft` column derived as `woody -> temperate.deciduous`, `row`/`rice`/`hay` -> `grass`, non-crop -> `soil`. Off by default so the canonical CSV stays project neutral. Workflows that need a more specific PFT scheme (e.g. `soil_rice`, `soil_nfixer` for rice and fixer simulations) should derive their own column locally.
+
+### Schema validation
+
+[tests/check_cadwr_pfts.R](tests/check_cadwr_pfts.R) verifies the structure of the table without pinning any value mappings. Run it from the repo root:
+
+```bash
+Rscript tests/check_cadwr_pfts.R
+```
+
+Checks: required columns are present, `(class, subclass)` is a unique key, `pft_group` values stay within `{row, woody, rice, hay, NA}`. Edits to individual mappings will pass; structural drift won't.
 
 ### Working with shapefiles
 

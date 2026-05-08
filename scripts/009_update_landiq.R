@@ -36,7 +36,7 @@ crops_all <- data.table::fread(
   )   
   
 crop_pft_map <- readr::read_csv(
-  file.path(raw_data_dir, "cadwr_land_use", "CARB_PFTs_table.csv")
+  file.path(raw_data_dir, "cadwr_land_use", "cadwr_pfts.csv")
 ) |>
   filter(pft_group %in% c("herbaceous", "woody"))
 
@@ -45,7 +45,7 @@ PEcAn.logger::logger.info(
   "\nNumber of records per CLASS each year:\n"
 )
 crops_all |>
-  filter(CLASS %in% crop_pft_map$crop_type) |>
+  filter(CLASS %in% crop_pft_map$class) |>
   group_by(year, CLASS) |>
   summarize(
     n = n()
@@ -62,10 +62,10 @@ crops_all_pft <- crops_all |>
   left_join(
     crop_pft_map,
     by = c(
-      "CLASS"    = "crop_type",
-      "SUBCLASS" = "crop_code"
+      "CLASS"    = "class",
+      "SUBCLASS" = "subclass"
     )
-  )  
+  )
 # Split into multidplyr_df by year and season
 # For parallel dplyr
 crops_all_pft_x <- crops_all_pft |>
@@ -86,7 +86,7 @@ missing_keys <- crops_all |>
   distinct(CLASS, SUBCLASS) |>
   anti_join(
     crop_pft_map,
-    by = c("CLASS" = "crop_type", "SUBCLASS" = "crop_code")
+    by = c("CLASS" = "class", "SUBCLASS" = "subclass")
   )
 PEcAn.logger::logger.info(
   "\nUnmatched CLASS/SUBCLASS pairs:\n",
