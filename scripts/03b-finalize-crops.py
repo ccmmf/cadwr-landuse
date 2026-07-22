@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from pathlib import Path
+import sys
 
 import geopandas as gpd
 import pandas as pd
@@ -9,6 +10,9 @@ import logging
 import argparse
 import gc
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _lib.landiq_years import discover_landiq_shapefiles, ensure_metadata_year_columns
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -17,8 +21,21 @@ parser.add_argument(
     "--landiq-root-dir",
     type=Path,
     default=Path("/projectnb/dietzelab/ccmmf/LandIQ_data/LandIQ_shapefiles"),
+    help="Root directory for LandIQ shapefiles (i15_Crop_Mapping_*_SHP folders)",
 )
 parser.add_argument("--outdir-root", type=Path, default=Path("_results/v4.1"))
+parser.add_argument(
+    "--min-year",
+    type=int,
+    default=2016,
+    help="Ignore shapefile years before this (default: 2016)",
+)
+parser.add_argument(
+    "--max-year",
+    type=int,
+    default=None,
+    help="Optional upper year bound (inclusive)",
+)
 args = parser.parse_args()
 
 landiq_root_dir = args.landiq_root_dir
@@ -59,27 +76,22 @@ combined_long = combined_df_melt.melt(
     id_vars=id_vars, var_name="year", value_name="UniqueID"
 )
 combined_long["year"] = combined_long["year"].astype("int16")
+combined_long["UniqueID"] = combined_long["UniqueID"].astype(str)
 del combined_df_melt
 gc.collect()
 
 # --- 2. Process one year at a time instead of concat-then-process ---
 metadata_file = Path("data") / "CARB_Metadata_ref.csv"
 metadata = pd.read_csv(metadata_file)
-keep_cols = metadata.loc[metadata["keep"] == 1]
 
-files = {
-    2016: landiq_root_dir / "i15_Crop_Mapping_2016_SHP" / "i15_Crop_Mapping_2016.shp",
-    2018: landiq_root_dir / "i15_Crop_Mapping_2018_SHP" / "i15_Crop_Mapping_2018.shp",
-    2019: landiq_root_dir / "i15_Crop_Mapping_2019_SHP" / "i15_Crop_Mapping_2019.shp",
-    2020: landiq_root_dir / "i15_Crop_Mapping_2020_SHP" / "i15_Crop_Mapping_2020.shp",
-    2021: landiq_root_dir / "i15_Crop_Mapping_2021_SHP" / "i15_Crop_Mapping_2021.shp",
-    2022: landiq_root_dir
-    / "i15_Crop_Mapping_2022_Provisional_SHP"
-    / "i15_Crop_Mapping_2022_Provisional.shp",
-    2023: landiq_root_dir
-    / "i15_Crop_Mapping_2023_Provisional_SHP"
-    / "i15_Crop_Mapping_2023_Provisional.shp",
-}
+files_str = discover_landiq_shapefiles(
+    landiq_root_dir,
+    min_year=args.min_year,
+    max_year=args.max_year,
+)
+files = {int(year): path for year, path in files_str.items()}
+metadata = ensure_metadata_year_columns(metadata, list(files.keys()), logger)
+keep_cols = metadata.loc[metadata["keep"] == 1]
 
 COLUMN_TYPES = {
     "SUBCLASS": "Int32",  # Int64 wastes space; 32-bit is plenty
@@ -115,6 +127,7 @@ def read_data(fname: Path, year: int):
     dat = gpd.read_file(fname, use_arrow=True, ignore_geometry=True, columns=read_cols)
     if year == 2016:
         dat = dat.reset_index(names="UniqueID")
+    if "UniqueID" in dat.columns:
         dat["UniqueID"] = dat["UniqueID"].astype(str)
     dat["year"] = np.int16(year)
     return dat
@@ -170,7 +183,7 @@ def melt_seasons(df: pd.DataFrame, id_cols: list) -> pd.DataFrame:
         key=int,
     )
 
-    # Build each season slice and concat — avoids wide_to_long's internal copies
+    # Build each season slice and concat - avoids wide_to_long's internal copies
     slices = []
     for s in seasons:
         stub_map = {

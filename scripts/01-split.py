@@ -1,15 +1,19 @@
 #!/usr/bin/env python
 
 import argparse
-from pathlib import Path
 import logging
+import sys
 from functools import reduce
+from pathlib import Path
 
 import geopandas as gpd
-import pandas as pd
 import numpy as np
+import pandas as pd
 from shapely import box
 from tqdm import tqdm
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _lib.landiq_years import discover_landiq_shapefiles
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,7 +25,7 @@ parser.add_argument(
     "--landiq-root-dir",
     type=Path,
     default=Path("/projectnb/dietzelab/ccmmf/LandIQ_data/LandIQ_shapefiles"),
-    help="Root directory for LandIQ shapefiles",
+    help="Root directory for LandIQ shapefiles (i15_Crop_Mapping_*_SHP folders)",
 )
 parser.add_argument(
     "--outdir-root",
@@ -29,38 +33,29 @@ parser.add_argument(
     default=Path("_results/v4.1"),
     help="Root directory for all outputs",
 )
+parser.add_argument(
+    "--min-year",
+    type=int,
+    default=2016,
+    help="Ignore shapefile years before this (default: 2016)",
+)
+parser.add_argument(
+    "--max-year",
+    type=int,
+    default=None,
+    help="Optional upper year bound (inclusive)",
+)
 args = parser.parse_args()
-# args = parser.parse_args(["--landiq-root-dir", "~/data/LandIQ_raw/"])
 landiq_root_dir = args.landiq_root_dir
 
 result_dir = args.outdir_root / "01-tiles-by-year"
 result_dir.mkdir(exist_ok=True, parents=True)
 
-f2016 = landiq_root_dir / "i15_Crop_Mapping_2016_SHP" / "i15_Crop_Mapping_2016.shp"
-f2018 = landiq_root_dir / "i15_Crop_Mapping_2018_SHP" / "i15_Crop_Mapping_2018.shp"
-f2019 = landiq_root_dir / "i15_Crop_Mapping_2019_SHP" / "i15_Crop_Mapping_2019.shp"
-f2020 = landiq_root_dir / "i15_Crop_Mapping_2020_SHP" / "i15_Crop_Mapping_2020.shp"
-f2021 = landiq_root_dir / "i15_Crop_Mapping_2021_SHP" / "i15_Crop_Mapping_2021.shp"
-f2022 = (
-    landiq_root_dir
-    / "i15_Crop_Mapping_2022_Provisional_SHP"
-    / "i15_Crop_Mapping_2022_Provisional.shp"
+files = discover_landiq_shapefiles(
+    landiq_root_dir,
+    min_year=args.min_year,
+    max_year=args.max_year,
 )
-f2023 = (
-    landiq_root_dir
-    / "i15_Crop_Mapping_2023_Provisional_SHP"
-    / "i15_Crop_Mapping_2023_Provisional.shp"
-)
-
-files = {
-    "2016": f2016,
-    "2018": f2018,
-    "2019": f2019,
-    "2020": f2020,
-    "2021": f2021,
-    "2022": f2022,
-    "2023": f2023,
-}
 
 
 def read_shp(fname: Path, suffix: str):
@@ -75,17 +70,20 @@ def read_shp(fname: Path, suffix: str):
     )
     # Year 2016 and earlier don't include a UniqueID column. So we create one
     # from the default pandas index (row number).
-    if idcol not in dat:
+    if idcol not in dat.columns:
         dat = dat.reset_index(names=idcol)
+    # Keep IDs as strings so merges match DWR character UniqueIDs.
+    dat[idcol] = dat[idcol].astype(str)
     return dat
 
 
 logger.info("Reading all data")
 dat_all = {year: read_shp(fname, year) for year, fname in tqdm(files.items())}
 
-# Use the 2023 CRS for everything
-logger.info("Harmonizing CRS")
-common_crs = dat_all["2023"].crs
+# Use the newest year's CRS for everything
+newest = max(dat_all.keys(), key=int)
+logger.info("Harmonizing CRS to year %s", newest)
+common_crs = dat_all[newest].crs
 dat_all = {year: data.to_crs(common_crs) for year, data in tqdm(dat_all.items())}
 
 # Get the UniqueIDs for each year. We will test this later.
@@ -122,7 +120,7 @@ for i in range(ntiles):
 
 def clip_to_tile(
     dat: gpd.GeoDataFrame, year: str, tile: dict, result_dir: Path = result_dir
-) -> Path | None:
+):
     tgeom = tile["geometry"]
     tid = tile["tile_id"]
     outdir = result_dir / f"{tid}"
@@ -161,7 +159,7 @@ for year in dat_all:
     expected = set(uids[year])
     actual = tile_uids.get(year, set())
     if actual == expected:
-        logger.info(f"Year {year}: ✓ All {len(expected)} unique IDs accounted for")
+        logger.info(f"Year {year}: OK All {len(expected)} unique IDs accounted for")
     else:
         missing = expected - actual
         extra = actual - expected
