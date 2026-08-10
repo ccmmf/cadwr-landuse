@@ -130,9 +130,9 @@ def clean_numeric_cols(df: pd.DataFrame) -> pd.DataFrame:
     for col in numeric_cols:
         if col not in df.columns:
             continue
-        # cols arrive numbered here (PCNT1/2/3/4, SUBCLASS1/.., ADOY1/..)
-        # because clean runs before melt_seasons, so key the special handling
-        # off the bare stub instead of the post melt name.
+        # Columns still have numbers appended to represent years (PCNT1, PCNT2, ...), 
+        # but COLUMN_TYPES does not (PCNT). 
+        # Strip these trailing digits before looking up type rules.
         stub = col.rstrip("0123456789")
         df[col] = df[col].replace(r"^\*+$", None, regex=True)
         if stub == "PCNT":
