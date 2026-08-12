@@ -185,7 +185,6 @@ The harmonized dataset combines all years into a single Parquet file with consis
 | `year` | integer | Data collection year (auto-discovered from shapefiles; typically 2016, 2018+) | No 2017 CADWR release |
 | `parcel_id` | integer | Unique parcel identifier | 0 indexed |
 | `ACRES` | numeric | Parcel area in acres | Computed from geometry in EPSG:3310 |
-| `centx` | numeric | Field centroid X coordinate | EPSG:3857 (Web Mercator) |
 | `centx` | numeric | Field centroid X coordinate | EPSG:3310 (California Albers) |
 | `centy` | numeric | Field centroid Y coordinate | EPSG:3310 (California Albers) |
 | `COUNTY` | character | California county name | Based on centroid location |
@@ -203,7 +202,6 @@ The harmonized dataset combines all years into a single Parquet file with consis
 | `EMRG_CROP` | character | Emerging crop at end of water year | Crop code; available 2019+ |
 | `YR_PLANTED` | integer | Year perennial crops were established | Available 2020+; 0 = unknown |
 | `SPECOND` | character | Special condition designation | Y = young perennial, etc. |
-| `IRRTYPPA` | character | Irrigation status | Blank = presumed irrigated, N = non-irrigated |
 | `IRR_TYPPA` | character | Irrigation status | Blank = presumed irrigated, N = non-irrigated |
 | `IRR_TYPPB` | character | Irrigation system type | Flood, drip, sprinkler, etc. |
 

@@ -120,7 +120,7 @@ for i in range(ntiles):
 
 def clip_to_tile(
     dat: gpd.GeoDataFrame, year: str, tile: dict, result_dir: Path = result_dir
-):
+) -> Path | None:
     tgeom = tile["geometry"]
     tid = tile["tile_id"]
     outdir = result_dir / f"{tid}"

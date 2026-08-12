@@ -124,6 +124,27 @@ def read_data(fname: Path, year: int):
     read_cols = keep_cols.loc[keep_cols[str(year)] == 1]["name"].tolist()
     # Also drop the ACRES column -- we calculate it later
     read_cols = [col for col in read_cols if col != "ACRES"]
+    try:
+        from pyogrio import read_info
+
+        available = set(read_info(fname)["fields"])
+    except Exception as exc:
+        logger.warning(
+            "Could not list fields for %s (%s); reading requested columns as-is",
+            fname,
+            exc,
+        )
+        available = None
+    if available is not None:
+        missing = [c for c in read_cols if c not in available]
+        if missing:
+            logger.warning(
+                "Year %s shapefile missing keep==1 columns %s; skipping them. "
+                "Update data/CARB_Metadata_ref.csv if this is expected.",
+                year,
+                missing,
+            )
+            read_cols = [c for c in read_cols if c in available]
     dat = gpd.read_file(fname, use_arrow=True, ignore_geometry=True, columns=read_cols)
     if year == 2016:
         dat = dat.reset_index(names="UniqueID")
