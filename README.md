@@ -10,11 +10,11 @@ This repository contains scripts, documentation, and lookup tables for processin
 
 ## Overview
 
-The LandIQ dataset provides annual field-level crop identification for all agricultural land in California, derived from satellite imagery (Landsat, Sentinel-2) and verified through ground surveys. This repository harmonizes data from 2016–2023 into a consistent format suitable for carbon cycle modeling at both field and regional scales.
+The LandIQ dataset provides annual field-level crop identification for all agricultural land in California, derived from satellite imagery (Landsat, Sentinel-2) and verified through ground surveys. This repository harmonizes annual LandIQ shapefiles (years discovered under `--landiq-root-dir`, typically 2016 and 2018+) into a consistent format suitable for carbon cycle modeling at both field and regional scales.
 
 **Key features of the harmonized dataset:**
 
-- **~600,000 individual parcels of land** tracked across 8 years (2016, 2018–2023)
+- **~600,000 individual parcels of land** tracked across available LandIQ years (2016, 2018+; no 2017 CADWR release)
 - **Consistent parcel ID** linking fields across years despite boundary changes
 - **Multi-season crop tracking** supporting up to 4 crop cycles per year
 - **PFT classification** mapping 200+ crop types to Plant Functional Types for ecosystem modeling
@@ -29,7 +29,7 @@ Original data from CADWR Statewide Crop Mapping Program:
 | **Source**           | California Department of Water Resources, Land Use Program                    |
 | **Website**          | https://data.cnra.ca.gov/dataset/statewide-crop-mapping                       |
 | **Coverage**         | Statewide California agricultural lands                                       |
-| **Temporal Extent**  | 2014, 2016, 2018–2023 (harmonized: 2016–2023)                                 |
+| **Temporal Extent**  | 2014, 2016, 2018+ (harmonized: years present under `--landiq-root-dir`, min 2016) |
 | **Update Frequency** | Annual (provisional releases typically in fall, finalized the following year) |
 | **Native CRS**       | WGS 84 / Pseudo-Mercator for 2014, 2016, and 2018 and NAD83 (EPSG 4269) from 2019 onwards; harmonized to EPSG:3310 (California Albers) for centroids |
 
@@ -98,7 +98,7 @@ The harmonization pipeline scripts are as follows:
     (2) We run `make_valid()` to resolve any invalid geometries (self-intersections, etc.).
 
     (3) We round the individual polygon coordinates to the nearest `X` meters.
-    This effectively "snaps" polygon vertices to a regular grid with resolution `X m × X m`, which closes some of the artificial gaps.
+    This effectively "snaps" polygon vertices to a regular grid with resolution `X m x X m`, which closes some of the artificial gaps.
     The value of `X` here is controlled by the `--precision` argument (default: 10 meters).
 
     (4) Finally, we apply `buffer(0)` to resolve any invalid geometries created by the precision snapping step.
@@ -110,6 +110,38 @@ The harmonization pipeline scripts are as follows:
 
 4. `scripts/03b-finalize-crops.py` --- This script reads the parcels from the previous step, merges the parcel UniqueIDs with each of the original LandIQ datasets, and creates a single, _very_ long but tidy dataset.
 
+**Years are auto-discovered** from `--landiq-root-dir`: any folder matching
+`i15_Crop_Mapping_<YEAR>[_Provisional]_SHP/` with a `.shp` inside is included
+(default `--min-year 2016`). Drop a new CNRA release, re-run the pipeline - no
+hardcoded year list to edit. If `data/CARB_Metadata_ref.csv` lacks a column for
+the new year, keep-flags are copied from the latest year (with a warning); update
+that CSV when attribute presence differs.
+
+### Adding a new LandIQ year (user / ops)
+
+1. Download the statewide **GIS Shapefile** ZIP from
+   [CNRA Statewide Crop Mapping](https://data.cnra.ca.gov/dataset/statewide-crop-mapping).
+2. Unzip into your drop directory, e.g.:
+
+   ```text
+   $CCMMF_ROOT/data_raw/cadwr_land_use/landiq_shapefiles/
+     i15_Crop_Mapping_2024_Provisional_SHP/
+       i15_Crop_Mapping_2024_Provisional.shp
+   ```
+
+3. Run the pipeline pointing at that root:
+
+   ```bash
+   export LANDIQ_ROOT_DIR=$CCMMF_ROOT/data_raw/cadwr_land_use/landiq_shapefiles
+   pixi run python scripts/01-split.py --landiq-root-dir "$LANDIQ_ROOT_DIR"
+   # then 02-process-tile (parallel), 03a, 03b - or on SCC:
+   # bash scripts/scc-harmonize.sh _results/v4.1
+   ```
+
+4. Copy `_results/v4.1/03-final/{parcels.gpkg,crops_all_years.parq,...}` to your
+   harmonized product directory (`LandIQ-harmonized-v4.1`), then continue with
+   CCMMF gap-fill in PEcAn `modules/data.remote/inst/ccmmf/landiq-gapfill`.
+
 At the end of this pipeline, we have two files:
 
 1. `parcels.gpkg` --- The individual parcel map (each row has a unique `parcel_id`, a geometry, and the mapping to each year's `UniqueID`).
@@ -119,24 +151,24 @@ At the end of this pipeline, we have two files:
 
 ```
 cadwr-landuse/
-├── LICENSE                         
-├── README.md                       
-├── docs/
-│   ├── harmonization_v0.1.md       # Harmonization workflow documentation (v0.1)
-│   └── metadata.qmd                # Generated metadata tables (from `data/`)
-├── data/
-│   ├── cadwr_pfts.csv              # Crop -> PFT mapping for ecosystem modeling
-│   ├── CARB_Metadata_ref.csv       # Column presence by year (provenance tracking)
-│   ├── crops_all_years_metadata.csv # Data dictionary for harmonized CSV
-│   └── landiq_crop_mapping_codes.tsv # Complete LandIQ classification codes (206 entries)
-└── scripts/
-    ├── 01-split.py                     # Harmonization pipeline -- see above
-    ├── 02-process-tile.py              # Harmonization pipeline -- see above
-    ├── 03a-combine-parcels.py            # Harmonization pipeline -- see above
-    ├── 03b-finalize-crops.py              # Harmonization pipeline -- see above
-    ├── ...
-    ├── scc-process-tiles.sh            # qsub script for running 02-process-tile.py as an array job
-    └── ...                             # Additional processing scripts
+|-- LICENSE                         
+|-- README.md                       
+|-- docs/
+|   |-- harmonization_v0.1.md       # Harmonization workflow documentation (v0.1)
+|   +-- metadata.qmd                # Generated metadata tables (from `data/`)
+|-- data/
+|   |-- cadwr_pfts.csv              # Crop -> PFT mapping for ecosystem modeling
+|   |-- CARB_Metadata_ref.csv       # Column presence by year (provenance tracking)
+|   |-- crops_all_years_metadata.csv # Data dictionary for harmonized CSV
+|   +-- landiq_crop_mapping_codes.tsv # Complete LandIQ classification codes (206 entries)
++-- scripts/
+    |-- 01-split.py                     # Harmonization pipeline -- see above
+    |-- 02-process-tile.py              # Harmonization pipeline -- see above
+    |-- 03a-combine-parcels.py            # Harmonization pipeline -- see above
+    |-- 03b-finalize-crops.py              # Harmonization pipeline -- see above
+    |-- ...
+    |-- scc-process-tiles.sh            # qsub script for running 02-process-tile.py as an array job
+    +-- ...                             # Additional processing scripts
 ```
 
 ## Data Products
@@ -150,10 +182,9 @@ The harmonized dataset combines all years into a single Parquet file with consis
 | Column | Type | Description | Notes |
 |--------|------|-------------|-------|
 | `UniqueID` | integer | Persistent field identifier across years | 2016 extrapolated from 2018 spatial join |
-| `year` | integer | Data collection year (2016, 2018–2023) | No 2017 data available |
+| `year` | integer | Data collection year (auto-discovered from shapefiles; typically 2016, 2018+) | No 2017 CADWR release |
 | `parcel_id` | integer | Unique parcel identifier | 0 indexed |
 | `ACRES` | numeric | Parcel area in acres | Computed from geometry in EPSG:3310 |
-| `centx` | numeric | Field centroid X coordinate | EPSG:3857 (Web Mercator) |
 | `centx` | numeric | Field centroid X coordinate | EPSG:3310 (California Albers) |
 | `centy` | numeric | Field centroid Y coordinate | EPSG:3310 (California Albers) |
 | `COUNTY` | character | California county name | Based on centroid location |
@@ -161,7 +192,7 @@ The harmonized dataset combines all years into a single Parquet file with consis
 | `REGION` | character | DWR regional office code | NRO, NCRO, SCRO, SRO |
 | `CLASS` | character | Primary crop class code | Single letter (see table below) |
 | `SUBCLASS` | integer | Crop subclass for specific identification | Numeric, crop-specific |
-| `season` | integer | Growing season (1–4) | Season 2 = main summer crop |
+| `season` | integer | Growing season (1-4) | Season 2 = main summer crop |
 | `MULTIUSE` | character | Cropping intensity code | S/D/T/Q/I/M (see below) |
 | `PCNT` | integer | Percentage of field area | "00" represents 100% |
 | `ADOY` | integer | Adjusted day-of-year for peak NDVI | Negative = prior year (e.g., -92 = Oct 1) |
@@ -171,7 +202,6 @@ The harmonized dataset combines all years into a single Parquet file with consis
 | `EMRG_CROP` | character | Emerging crop at end of water year | Crop code; available 2019+ |
 | `YR_PLANTED` | integer | Year perennial crops were established | Available 2020+; 0 = unknown |
 | `SPECOND` | character | Special condition designation | Y = young perennial, etc. |
-| `IRRTYPPA` | character | Irrigation status | Blank = presumed irrigated, N = non-irrigated |
 | `IRR_TYPPA` | character | Irrigation status | Blank = presumed irrigated, N = non-irrigated |
 | `IRR_TYPPB` | character | Irrigation system type | Flood, drip, sprinkler, etc. |
 
@@ -195,18 +225,18 @@ LandIQ uses a hierarchical CLASS/SUBCLASS system. Major crop classes:
  alexey-harmonize-tiled
 | CLASS | Category | Examples | Typical SUBCLASS Range |
 |-------|----------|----------|------------------------|
-| C | Citrus & Subtropical | Oranges, lemons, avocados, olives | 1–11 |
-| D | Deciduous Fruits & Nuts | Almonds, walnuts, pistachios, stone fruits | 1–21 |
-| F | Field Crops | Cotton, corn, beans, safflower | 1–18 |
-| G | Grain & Hay | Wheat, barley, oats | 1–7 |
-| P | Pasture | Alfalfa, mixed pasture, turf | 1–9 |
+| C | Citrus & Subtropical | Oranges, lemons, avocados, olives | 1-11 |
+| D | Deciduous Fruits & Nuts | Almonds, walnuts, pistachios, stone fruits | 1-21 |
+| F | Field Crops | Cotton, corn, beans, safflower | 1-18 |
+| G | Grain & Hay | Wheat, barley, oats | 1-7 |
+| P | Pasture | Alfalfa, mixed pasture, turf | 1-9 |
 | NR | Riparian Vegetation | Marsh, meadow, streamside vegetation | 1-5 |
-| R | Rice | Paddy rice, wild rice | 1–2 |
-| T | Truck, Nursery & Berry | Tomatoes, lettuce, strawberries | 1–34 |
-| V | Vineyards | Table, wine, and raisin grapes | 1–4 |
-| I | Idle | Fallow land (1–4+ years) | 1–4 |
-| YP | Young Perennial | Recently planted orchards/vineyards | — |
-| X | Unclassified | Unable to determine | — |
+| R | Rice | Paddy rice, wild rice | 1-2 |
+| T | Truck, Nursery & Berry | Tomatoes, lettuce, strawberries | 1-34 |
+| V | Vineyards | Table, wine, and raisin grapes | 1-4 |
+| I | Idle | Fallow land (1-4+ years) | 1-4 |
+| YP | Young Perennial | Recently planted orchards/vineyards | - |
+| X | Unclassified | Unable to determine | - |
 | U | Urban | Urban - generic nomenclature | - |
 | UL | Lawn | Irrigated lawns, golf courses, cemeteries | 1-5 |
 
@@ -386,7 +416,7 @@ The harmonization workflow consists of four main steps (see [Core harmonization 
 1. **Split** ([`01-split.py`](scripts/01-split.py))
    - Load annual shapefiles from CADWR
    - Harmonize CRS across years
-   - Split California into 625 tiles (25×25 grid)
+   - Split California into 625 tiles (25x25 grid)
    - Output: geoparquet files per tile per year
 
 2. **Process Tiles** ([`02-process-tile.py`](scripts/02-process-tile.py))
@@ -402,7 +432,7 @@ The harmonization workflow consists of four main steps (see [Core harmonization 
 
 4. **Finalize Crops** ([`03b-finalize-crops.py`](scripts/03b-finalize-crops.py))
    - Merge parcel IDs with LandIQ attributes for each year
-   - Pivot to long format (one row per parcel × year × season)
+   - Pivot to long format (one row per parcel x year x season)
    - Output: Parquet file with complete attribute table
 
 ## Known Data Issues
@@ -410,9 +440,9 @@ The harmonization workflow consists of four main steps (see [Core harmonization 
 | Issue | Affected Years | Description | Workaround |
 |-------|----------------|-------------|------------|
 | Missing UniqueID | 2016 | Extrapolated from 2018 spatial join | Fields with NA UniqueID were not in 2018 data |
-| Provisional data | 2022–2023 | May be updated in future CADWR releases | Check for updates annually |
-| No Season 4 | 2016 | Fourth season added starting 2018 | Use seasons 1–3 only for 2016 |
-| Missing YR_PLANTED | 2016–2019 | Only available from 2020 onward | Back-filled where possible; 0 = unknown |
+| Provisional data | 2022-2023 | May be updated in future CADWR releases | Check for updates annually |
+| No Season 4 | 2016 | Fourth season added starting 2018 | Use seasons 1-3 only for 2016 |
+| Missing YR_PLANTED | 2016-2019 | Only available from 2020 onward | Back-filled where possible; 0 = unknown |
 | Centroid shifts | All years | Field boundaries occasionally change | Same UniqueID may have slightly different coordinates |
 | No 2017 data | 2017 | CADWR did not release 2017 survey | Gap year in time series |
 
